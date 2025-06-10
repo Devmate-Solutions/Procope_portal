@@ -10,10 +10,11 @@ import { useState } from "react"
 import Link from "next/link"
 
 interface CallSuccessChartProps {
-  data: any[]
+  data: any[] | any
   title?: string
   agent?: string
   dateRange?: { from: Date; to: Date } | undefined
+  aggregatedData?: boolean
 }
 
 export function CallSuccessChart({
@@ -21,18 +22,37 @@ export function CallSuccessChart({
   title = "Call Successful",
   agent = "All agents",
   dateRange,
+  aggregatedData = false,
 }: CallSuccessChartProps) {
   const [showDetailedView, setShowDetailedView] = useState(false)
 
   const calculateSuccessRates = () => {
-    let filteredData = data
+    // Handle aggregated data from analytics API
+    if (aggregatedData && typeof data === 'object' && !Array.isArray(data)) {
+      const result = [];
+
+      if (data.successful > 0) {
+        result.push({ name: "Successful", value: data.successful, color: "#10b981" });
+      }
+      if (data.unsuccessful > 0) {
+        result.push({ name: "Unsuccessful", value: data.unsuccessful, color: "#ef4444" });
+      }
+      if (data.unknown > 0) {
+        result.push({ name: "Unknown", value: data.unknown, color: "#94a3b8" });
+      }
+
+      return result.length > 0 ? result : [{ name: "No Data", value: 1, color: "#94a3b8" }];
+    }
+
+    // Handle individual call data (original logic)
+    let filteredData = Array.isArray(data) ? data : [];
 
     // Filter by date range if provided
     if (dateRange?.from && dateRange?.to) {
       const fromTime = dateRange.from.getTime()
       const toTime = dateRange.to.getTime() + (24 * 60 * 60 * 1000 - 1)
 
-      filteredData = data.filter((call) => {
+      filteredData = filteredData.filter((call) => {
         if (!call.start_timestamp) return false
         const callTime = new Date(call.start_timestamp).getTime()
         return callTime >= fromTime && callTime <= toTime

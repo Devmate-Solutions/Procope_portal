@@ -16,6 +16,8 @@ import { DisconnectionReasonChart } from "./disconnection-reason-chart"
 import { MetricCard } from "./metric-card"
 import { UserSentimentChart } from "./user-sentiment-chart"
 import { CustomChart } from "./custom-chart"
+import { getAnalytics, getCurrentUser, getUserAgentIds, getAgents } from '@/lib/azure-api'
+import { getCurrentUser as getAuthUser } from '@/lib/auth'
 
 
 interface AnalyticsData {
@@ -55,7 +57,7 @@ export function Analytics() {
   })
   const [dateRange, setDateRange] = useState("All time")
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange | undefined>()
-  const [selectedAgentId, setSelectedAgentId] = useState<string>("agent_a3f5d1a7dd6d0abe1ded29a1fc")
+  const [selectedAgentId, setSelectedAgentId] = useState<string>("")
   const [isLoading, setIsLoading] = useState(true)
   const [showAddChart, setShowAddChart] = useState(false)
   const [customCharts, setCustomCharts] = useState<CustomChart[]>(() => {
@@ -66,15 +68,56 @@ export function Analytics() {
         return savedCharts ? JSON.parse(savedCharts) : []
       }
     } catch (error) {
-      
+
     }
     return []
   })
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [user, setUser] = useState<any>(null)
+  const [agentNames, setAgentNames] = useState<Record<string, string>>({})
 
   // Add router to the component
   const router = useRouter()
+
+  // Fetch agent names
+  const fetchAgentNames = async () => {
+    try {
+      const agents = await getAgents();
+      const nameMap: Record<string, string> = {};
+
+      if (Array.isArray(agents)) {
+        agents.forEach((agent: any) => {
+          if (agent.agent_id && agent.agent_name) {
+            nameMap[agent.agent_id] = agent.agent_name;
+          }
+        });
+      }
+
+      setAgentNames(nameMap);
+      console.log('📋 Agent names loaded:', nameMap);
+    } catch (error) {
+      console.error('Failed to fetch agent names:', error);
+    }
+  };
+
+  // Initialize user and agent data
+  useEffect(() => {
+    const currentUser = getAuthUser();
+    if (!currentUser) {
+      router.push('/login');
+      return;
+    }
+
+    setUser(currentUser);
+    // Set the first agent as default if available
+    if (currentUser.agentIds && currentUser.agentIds.length > 0) {
+      setSelectedAgentId(currentUser.agentIds[0]);
+    }
+
+    // Fetch agent names
+    fetchAgentNames();
+  }, [router]);
 
   useEffect(() => {
     fetchAnalytics()
@@ -107,44 +150,30 @@ export function Analytics() {
       setError(null)
       setIsRefreshing(true)
 
-      const params = new URLSearchParams()
+      console.log('🔄 Fetching analytics data...');
+
+      // Build filters object for Azure API
+      const filters: any = {}
 
       // Add date range parameters if selected
       if (selectedDateRange?.from && selectedDateRange?.to) {
-        // Convert to ISO date strings for better handling
-        const fromDate = selectedDateRange.from.toISOString().split("T")[0]
-        const toDate = selectedDateRange.to.toISOString().split("T")[0]
-
-        params.append("start_date", fromDate)
-        params.append("end_date", toDate)
-
-        // Also add timestamp format for backward compatibility
+        // Convert to timestamp format for Azure API
         const fromTimestamp = selectedDateRange.from.getTime()
         const toTimestamp = selectedDateRange.to.getTime() + (24 * 60 * 60 * 1000 - 1)
 
-        params.append("from_timestamp", fromTimestamp.toString())
-        params.append("to_timestamp", toTimestamp.toString())
+        filters.start_timestamp_after = fromTimestamp.toString()
+        filters.start_timestamp_before = toTimestamp.toString()
       }
 
-      // Add agent_id parameter
+      // Add agent_id parameter - Azure API will filter by user's accessible agents
       if (selectedAgentId && selectedAgentId !== "all") {
-        params.append("agent_id", selectedAgentId)
+        filters.agent_id = selectedAgentId
       }
 
-      const url = `/api/calls/analytics${params.toString() ? `?${params.toString()}` : ""}`
-      
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const data = await response.json()
+      // Call Azure Function API
+      console.log('📡 Calling getAnalytics with filters:', filters);
+      const data = await getAnalytics(filters)
+      console.log('📦 Analytics response:', data);
 
       if (data.error) {
         setError(data.error)
@@ -153,17 +182,35 @@ export function Analytics() {
           apiStatus: "error",
         })
       } else {
-        setAnalyticsData(data)
-       
+        // Map backend response to frontend format
+        const mappedData = {
+          totalCalls: data.callCount || 0,
+          averageDuration: data.callDuration?.formattedDuration || "0m 0s",
+          averageLatency: data.callLatency ? `${data.callLatency}ms` : "0ms",
+          chartData: [], // Will be populated from rawCalls if needed
+          agents: user?.agentIds || [],
+          rawCalls: [], // Backend doesn't return individual calls in analytics
+          apiStatus: "success",
+          selectedAgentId: selectedAgentId,
+          // Additional analytics data
+          callSuccessData: data.callSuccessData || { successful: 0, unsuccessful: 0, unknown: 0 },
+          disconnectionData: data.disconnectionData || {},
+          directionData: data.directionData || {},
+          callAnalytics: data.callAnalytics || {},
+          callDuration: data.callDuration || { totalDuration: 0, formattedDuration: "0m 0s" },
+          // Store agent names for display
+          agentNames: data.agentNames || {}
+        };
 
-        if (data.apiStatus === "error") {
-          setError("Failed to connect to Retell AI API - Please check your API key")
-        } else if (data.totalCalls === 0) {
+        console.log('📊 Mapped analytics data:', mappedData);
+        setAnalyticsData(mappedData);
+
+        if (mappedData.totalCalls === 0) {
           setError("No call data found for the selected period")
         }
       }
     } catch (error) {
-     
+      console.error('Analytics fetch error:', error)
       setError(error instanceof Error ? error.message : "Failed to load data")
     } finally {
       setIsLoading(false)
@@ -208,12 +255,29 @@ export function Analytics() {
 
   const getAgentDisplay = () => {
     if (selectedAgentId && selectedAgentId !== "all") {
-      return `Agent: Orasurge Outbound V2`
+      // Use actual agent name if available
+      const agentName = agentNames[selectedAgentId];
+      if (agentName) {
+        // Create a shorter display name based on agent type
+        if (agentName.toLowerCase().includes('inbound')) {
+          return "Inbound Agent";
+        } else if (agentName.toLowerCase().includes('outbound')) {
+          return "Outbound Agent";
+        } else {
+          // Use first 25 characters of agent name
+          return agentName.length > 25 ? agentName.substring(0, 25) + "..." : agentName;
+        }
+      }
+
+      // Fallback to agent index or ID
+      const agentIndex = user?.agentIds?.indexOf(selectedAgentId)
+      if (agentIndex !== undefined && agentIndex >= 0) {
+        return `Agent: ${user.workspaceName} Agent ${agentIndex + 1}`
+      }
+      return `Agent: ${selectedAgentId.substring(0, 12)}...`
     }
 
-    const agent = analyticsData.agents?.[0]
-    if (!agent || agent === "No agents found") return "No agent"
-    return `Agent: ${agent.substring(0, 8)}...`
+    return `All Agents (${user?.agentIds?.length || 0})`
   }
 
   const getGridClasses = () => {
@@ -227,6 +291,18 @@ export function Analytics() {
   }
 
  
+
+  // Show loading state if user is not loaded yet
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading analytics...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -274,11 +350,38 @@ export function Analytics() {
 
         {/* Agent Filter */}
         <div className="flex items-center space-x-2">
-       
-           <h1> Orasurge Outbound V2</h1>
-                  
-               
-          
+          <span className="text-sm font-medium text-gray-700">
+            {user?.workspaceName} - {getAgentDisplay()}
+          </span>
+          {user?.agentIds && user.agentIds.length > 1 && (
+            <select
+              value={selectedAgentId}
+              onChange={(e) => setSelectedAgentId(e.target.value)}
+              className="text-sm border border-gray-300 rounded px-2 py-1"
+            >
+              <option value="">All Agents</option>
+              {user.agentIds.map((agentId: string, index: number) => {
+                const agentName = agentNames[agentId];
+                let displayName = `Agent ${index + 1}`;
+
+                if (agentName) {
+                  if (agentName.toLowerCase().includes('inbound')) {
+                    displayName = "Inbound Agent";
+                  } else if (agentName.toLowerCase().includes('outbound')) {
+                    displayName = "Outbound Agent";
+                  } else {
+                    displayName = agentName.length > 30 ? agentName.substring(0, 30) + "..." : agentName;
+                  }
+                }
+
+                return (
+                  <option key={agentId} value={agentId}>
+                    {displayName}
+                  </option>
+                );
+              })}
+            </select>
+          )}
         </div>
       </div>
 
@@ -286,28 +389,31 @@ export function Analytics() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <MetricCard
           title="Call Counts"
-
-          value={isLoading ? "..." : analyticsData.totalCalls.toString()}
+          value={isLoading ? "..." : (analyticsData?.totalCalls?.toString() || "0")}
           metric="calls"
-          chartData={analyticsData.chartData.map((item) => ({ ...item, value: item.calls || 0 }))}
+          chartData={analyticsData?.chartData?.map((item) => ({ ...item, value: item.calls || 0 })) || []}
           isLoading={isLoading}
-          chartType="line" subtitle={""}        />
+          chartType="line"
+          subtitle=""
+        />
         <MetricCard
           title="Call Duration"
-
-          value={isLoading ? "..." : analyticsData.averageDuration}
+          value={isLoading ? "..." : (analyticsData?.averageDuration || "0m")}
           metric="duration"
-          chartData={analyticsData.chartData.map((item) => ({ ...item, value: item.duration || 0 }))}
+          chartData={analyticsData?.chartData?.map((item) => ({ ...item, value: item.duration || 0 })) || []}
           isLoading={isLoading}
-          chartType="line" subtitle={""}        />
+          chartType="line"
+          subtitle=""
+        />
         <MetricCard
           title="Call Latency"
-
-          value={isLoading ? "..." : analyticsData.averageLatency}
+          value={isLoading ? "..." : (analyticsData?.averageLatency || "0ms")}
           metric="latency"
-          chartData={analyticsData.chartData.map((item) => ({ ...item, value: Math.round(item.latency || 0) }))}
+          chartData={analyticsData?.chartData?.map((item) => ({ ...item, value: Math.round(item.latency || 0) })) || []}
           isLoading={isLoading}
-          chartType="line" subtitle={""}        />
+          chartType="line"
+          subtitle=""
+        />
       </div>
 
       {/* Advanced Analytics Charts */}
@@ -317,14 +423,25 @@ export function Analytics() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <DisconnectionReasonChart
-              data={analyticsData.rawCalls}
+              data={analyticsData?.disconnectionData || {}}
               agent={getAgentDisplay()}
-              
+              aggregatedData={true}
             />
-            <UserSentimentChart data={analyticsData.rawCalls} agent={getAgentDisplay()} />
-            <CallDirectionChart data={analyticsData.rawCalls} agent={getAgentDisplay()}  />
-            <CallSuccessChart data={analyticsData.rawCalls} agent={getAgentDisplay()}/>
-           
+            <UserSentimentChart
+              data={analyticsData?.callAnalytics?.sentiments || {}}
+              agent={getAgentDisplay()}
+              aggregatedData={true}
+            />
+            <CallDirectionChart
+              data={analyticsData?.directionData || {}}
+              agent={getAgentDisplay()}
+              aggregatedData={true}
+            />
+            <CallSuccessChart
+              data={analyticsData?.callSuccessData || {}}
+              agent={getAgentDisplay()}
+              aggregatedData={true}
+            />
           </div>
         </>
       )}
@@ -334,8 +451,8 @@ export function Analytics() {
         <AddCustomChart
           onSave={handleAddChart}
           onCancel={() => setShowAddChart(false)}
-          availableAgents={analyticsData.agents}
-          analyticsData={analyticsData}
+          availableAgents={analyticsData?.agents || []}
+          analyticsData={analyticsData || {}}
         />
       )}
 

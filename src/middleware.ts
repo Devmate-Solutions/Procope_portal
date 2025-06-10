@@ -16,16 +16,16 @@ export async function middleware(request: NextRequest) {
   }
 
   // Define protected routes
-  const protectedRoutes = ['/analytics', '/create-calls', '/call-history']
+  const protectedRoutes = ['/dashboard', '/analytics', '/create-calls', '/call-history', '/agents', '/settings']
   const loginPath = '/login'
 
   // If trying to access a protected route without authentication
   if (protectedRoutes.includes(path)) {
     // Verify token and Azure AD authentication
     const isValidToken = token ? await verifyToken(token) : null
-    
+
     console.log(`🔍 Token validation result for ${path}: ${isValidToken ? 'Valid' : 'Invalid'}`);
-    
+
     if (!isValidToken) {
       // Redirect to login if not authenticated
       console.log(`🔄 Redirecting to login from ${path}`);
@@ -33,14 +33,14 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // If already logged in and trying to access login page, redirect to analytics
+  // If already logged in and trying to access login page, redirect to dashboard
   if (path === loginPath && token) {
     const isValidToken = await verifyToken(token)
     console.log(`🔍 Login page token validation: ${isValidToken ? 'Valid' : 'Invalid'}`);
-    
+
     if (isValidToken) {
-      console.log('🔄 Already logged in, redirecting to analytics');
-      return NextResponse.redirect(new URL('/analytics', request.url))
+      console.log('🔄 Already logged in, redirecting to dashboard');
+      return NextResponse.redirect(new URL('/dashboard', request.url))
     }
   }
 
@@ -50,9 +50,12 @@ export async function middleware(request: NextRequest) {
 // Updated matcher to include all protected routes
 export const config = {
   matcher: [
-    '/login', 
-    '/analytics', 
-    '/create-calls', 
-    '/call-history'
+    '/login',
+    '/dashboard',
+    '/analytics',
+    '/create-calls',
+    '/call-history',
+    '/agents',
+    '/settings'
   ]
-} 
+}

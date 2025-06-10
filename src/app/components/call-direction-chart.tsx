@@ -10,10 +10,11 @@ import { useState } from "react"
 import Link from "next/link"
 
 interface CallDirectionChartProps {
-  data: any[]
+  data: any[] | any
   title?: string
   agent?: string
   dateRange?: { from: Date; to: Date } | undefined
+  aggregatedData?: boolean
 }
 
 export function CallDirectionChart({
@@ -21,17 +22,36 @@ export function CallDirectionChart({
   title = "Phone inbound/outbound",
   agent = "All agents",
   dateRange,
+  aggregatedData = false,
 }: CallDirectionChartProps) {
   const [showDetailedView, setShowDetailedView] = useState(false)
   const calculateDirectionDistribution = () => {
-    let filteredData = data
+    // Handle aggregated data from analytics API
+    if (aggregatedData && typeof data === 'object' && !Array.isArray(data)) {
+      const result = [];
+
+      if (data.inbound > 0) {
+        result.push({ name: "Inbound", value: data.inbound, color: "#60a5fa" });
+      }
+      if (data.outbound > 0) {
+        result.push({ name: "Outbound", value: data.outbound, color: "#f97316" });
+      }
+      if (data.unknown > 0) {
+        result.push({ name: "Unknown", value: data.unknown, color: "#94a3b8" });
+      }
+
+      return result.length > 0 ? result : [{ name: "No Data", value: 1, color: "#94a3b8" }];
+    }
+
+    // Handle individual call data (original logic)
+    let filteredData = Array.isArray(data) ? data : [];
 
     // Filter by date range if provided
     if (dateRange?.from && dateRange?.to) {
       const fromTime = dateRange.from.getTime()
       const toTime = dateRange.to.getTime() + (24 * 60 * 60 * 1000 - 1)
 
-      filteredData = data.filter((call) => {
+      filteredData = filteredData.filter((call) => {
         if (!call.start_timestamp) return false
         const callTime = new Date(call.start_timestamp).getTime()
         return callTime >= fromTime && callTime <= toTime

@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
+import { createCall, createBatchCalls, getAgents } from '@/lib/azure-api';
+import { getCurrentUser } from '@/lib/auth';
+import { useRouter } from 'next/navigation';
+import AuthenticatedLayout from '../components/AuthenticatedLayout';
 
-// Default values from the provided script
+// Default values - will be updated from user data
 const DEFAULT_FROM_NUMBER = '+16507478843'; // Your Retell phone number
-const DEFAULT_AGENT_ID = 'agent_a3f5d1a7dd6d0abe1ded29a1fc'; // Orasurge Outbound V2 agent
-;
 
 interface CallFormData {
   fromNumber: string;
@@ -23,13 +25,59 @@ interface CsvRow {
 }
 
 export default function CreateCallsPage() {
+  const [user, setUser] = useState<any>(null);
+  const [agentNames, setAgentNames] = useState<Record<string, string>>({});
+  const router = useRouter();
+
   const [formData, setFormData] = useState<CallFormData>({
     fromNumber: DEFAULT_FROM_NUMBER,
     toNumber: '',
-    agentId: DEFAULT_AGENT_ID,
+    agentId: '',
     customerName: '',
     delayMinutes: 15
   });
+
+  // Fetch agent names
+  const fetchAgentNames = async () => {
+    try {
+      const agents = await getAgents();
+      const nameMap: Record<string, string> = {};
+
+      if (Array.isArray(agents)) {
+        agents.forEach((agent: any) => {
+          if (agent.agent_id && agent.agent_name) {
+            nameMap[agent.agent_id] = agent.agent_name;
+          }
+        });
+      }
+
+      setAgentNames(nameMap);
+      console.log('📋 Agent names loaded:', nameMap);
+    } catch (error) {
+      console.error('Failed to fetch agent names:', error);
+    }
+  };
+
+  // Initialize user and set default agent
+  useEffect(() => {
+    const currentUser = getCurrentUser();
+    if (!currentUser) {
+      router.push('/login');
+      return;
+    }
+
+    setUser(currentUser);
+    // Set the first agent as default if available
+    if (currentUser.agentIds && currentUser.agentIds.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        agentId: currentUser.agentIds[0]
+      }));
+    }
+
+    // Fetch agent names
+    fetchAgentNames();
+  }, [router]);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,17 +110,18 @@ export default function CreateCallsPage() {
   const formatPhoneNumber = (phoneNumber: string): string => {
     // Clean the phone number
     const cleaned = phoneNumber.trim().replace(/[^0-9+]/g, '');
-    
-    // Add +1 prefix if it's a 10-digit US number
-    if (cleaned.length === 10 && !cleaned.startsWith('+')) {
-      return `+1${cleaned}`;
+
+    // If it already starts with +, return as is
+    if (cleaned.startsWith('+')) {
+      return cleaned;
     }
-    
-    // Add + prefix if missing
-    if (!cleaned.startsWith('+')) {
+
+    // For numbers without +, add + prefix (don't assume country code)
+    // User must provide the full international number including country code
+    if (cleaned.length > 0) {
       return `+${cleaned}`;
     }
-    
+
     return cleaned;
   };
   
@@ -205,11 +254,11 @@ export default function CreateCallsPage() {
       });
     }
     
-    // Prepare payload
+    // Prepare payload for Azure API
     const payload = {
       from_number: fromNumber,
       to_number: formattedToNumber,
-      override_agent_id: formData.agentId,
+      agent_id: formData.agentId,
       override_agent_version: 1,
       metadata: {},
       // Only add retell_llm_dynamic_variables if we have variables to add
@@ -217,23 +266,11 @@ export default function CreateCallsPage() {
         retell_llm_dynamic_variables: dynamicVariables
       } : {})
     };
-    
-    
-    // Make API request to our internal endpoint
-    const response = await fetch('/api/create-call', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload)
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `API Error (${response.status})`);
-    }
-    
-    const data = await response.json();
+
+    console.log('Creating call with payload:', payload);
+
+    // Use Azure API
+    const data = await createCall(payload);
     return data.call_id;
   };
   
@@ -339,8 +376,9 @@ export default function CreateCallsPage() {
   };
   
   return (
-    <div className="min-h-screen bg-white">
-      <div className="container mx-auto px-6 py-12 max-w-7xl">
+    <AuthenticatedLayout>
+      <div className="min-h-screen bg-white">
+        <div className="container mx-auto px-6 py-12 max-w-7xl">
         {/* Header with Logo */}
      
 
@@ -420,7 +458,7 @@ export default function CreateCallsPage() {
                       value={formData.fromNumber}
                       onChange={handleChange}
                       className="w-full p-2 border border-gray-300 rounded-md"
-                      placeholder="+16507478843"
+                      placeholder="+1234567890 (include country code)"
                       required
                     />
                     <p className="text-xs text-gray-500 mt-1">
@@ -439,30 +477,62 @@ export default function CreateCallsPage() {
                       value={formData.toNumber}
                       onChange={handleChange}
                       className="w-full p-2 border border-gray-300 rounded-md"
-                      placeholder="+12137774445"
+                      placeholder="+44123456789 (include country code)"
                       required
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      The recipient's phone number (E.164 format)
+                      The recipient's phone number with country code (E.164 format). Examples: +1234567890 (US)
                     </p>
                   </div>
                 </div>
                 
-                {/* Agent ID */}
+                {/* Agent Selection */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Agent ID <span className="text-red-500">*</span>
+                    Agent <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
-                    name="agentId"
-                    value={formData.agentId}
-                    onChange={handleChange}
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                    required
-                  />
+                  {user?.agentIds && user.agentIds.length > 1 ? (
+                    <select
+                      name="agentId"
+                      value={formData.agentId}
+                      onChange={handleChange}
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                      required
+                    >
+                      {user.agentIds.map((agentId: string, index: number) => {
+                        const agentName = agentNames[agentId];
+                        let displayName = `Agent ${index + 1}`;
+
+                        if (agentName) {
+                          if (agentName.toLowerCase().includes('inbound')) {
+                            displayName = "Inbound Agent";
+                          } else if (agentName.toLowerCase().includes('outbound')) {
+                            displayName = "Outbound Agent";
+                          } else {
+                            displayName = agentName.length > 30 ? agentName.substring(0, 30) + "..." : agentName;
+                          }
+                        }
+
+                        return (
+                          <option key={agentId} value={agentId}>
+                            {displayName}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      name="agentId"
+                      value={formData.agentId}
+                      onChange={handleChange}
+                      className="w-full p-2 border border-gray-300 rounded-md bg-gray-50"
+                      required
+                      readOnly
+                    />
+                  )}
                   <p className="text-xs text-gray-500 mt-1">
-                    Default: Orasurge Outbound V2 agent
+                    Workspace: {user?.workspaceName} - {user?.agentIds?.length || 0} agent(s) available
                   </p>
                 </div>
                 
@@ -513,11 +583,11 @@ export default function CreateCallsPage() {
                       value={formData.fromNumber}
                       onChange={handleChange}
                       className="w-full p-2 border border-gray-300 rounded-md"
-                      placeholder="+16507478843"
+                      placeholder="+1234567890 (include country code)"
                       required
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      Must be a number you own in Retell (E.164 format)
+                      Must be a number you own in Retell with country code (E.164 format)
                     </p>
                   </div>
                   
@@ -680,7 +750,8 @@ export default function CreateCallsPage() {
             )}
           </div>
         </div>
+        </div>
       </div>
-    </div>
+    </AuthenticatedLayout>
   );
-} 
+}

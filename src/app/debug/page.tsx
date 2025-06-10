@@ -52,12 +52,17 @@ export default function DebugPage() {
   };
 
   const checkCookies = () => {
+    if (typeof window === 'undefined') {
+      alert('Cannot check cookies during server-side rendering');
+      return;
+    }
+
     const cookies = document.cookie.split(';').reduce((acc, cookie) => {
       const [key, value] = cookie.trim().split('=');
       acc[key] = value;
       return acc;
     }, {} as Record<string, string>);
-    
+
     console.log('🍪 All cookies:', cookies);
     alert(`Cookies: ${JSON.stringify(cookies, null, 2)}`);
   };
@@ -92,16 +97,16 @@ export default function DebugPage() {
               />
             </div>
             <div className="flex space-x-2">
-              <Button onClick={handleLogin} disabled={isLoading}>
+              <Button onClick={handleLogin} disabled={isLoading} variant="default" size="default" className="">
                 {isLoading ? 'Logging in...' : 'Login'}
               </Button>
-              <Button onClick={handleLogout} variant="outline">
+              <Button onClick={handleLogout} variant="outline" size="default" className="">
                 Logout
               </Button>
-              <Button onClick={refreshData} variant="outline">
+              <Button onClick={refreshData} variant="outline" size="default" className="">
                 Refresh Data
               </Button>
-              <Button onClick={checkCookies} variant="outline">
+              <Button onClick={checkCookies} variant="outline" size="default" className="">
                 Check Cookies
               </Button>
             </div>
@@ -164,10 +169,10 @@ export default function DebugPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2 text-sm">
-              <p><strong>User Agent:</strong> {navigator.userAgent}</p>
-              <p><strong>Current URL:</strong> {window.location.href}</p>
-              <p><strong>Local Storage Available:</strong> {typeof Storage !== 'undefined' ? '✅ Yes' : '❌ No'}</p>
-              <p><strong>Cookies Enabled:</strong> {navigator.cookieEnabled ? '✅ Yes' : '❌ No'}</p>
+              <p><strong>User Agent:</strong> {typeof window !== 'undefined' ? navigator.userAgent : 'Server-side rendering'}</p>
+              <p><strong>Current URL:</strong> {typeof window !== 'undefined' ? window.location.href : 'Server-side rendering'}</p>
+              <p><strong>Local Storage Available:</strong> {typeof window !== 'undefined' && typeof Storage !== 'undefined' ? '✅ Yes' : '❌ No'}</p>
+              <p><strong>Cookies Enabled:</strong> {typeof window !== 'undefined' ? (navigator.cookieEnabled ? '✅ Yes' : '❌ No') : 'Unknown'}</p>
             </div>
           </CardContent>
         </Card>
@@ -179,7 +184,7 @@ export default function DebugPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <Button 
+              <Button
                 onClick={() => {
                   fetch('https://func-retell425.azurewebsites.net/api/auth/login', {
                     method: 'POST',
@@ -197,6 +202,8 @@ export default function DebugPage() {
                   });
                 }}
                 variant="outline"
+                size="default"
+                className=""
               >
                 Test Direct API Call
               </Button>

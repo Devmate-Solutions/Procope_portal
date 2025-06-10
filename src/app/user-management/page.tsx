@@ -71,7 +71,7 @@ export default function UserManagementPage() {
         },
         {
           id: '2',
-          username: 'jane_user',
+          username: 'jane_subadmin',
           email: 'jane@example.com',
           role: 'subadmin',
           workspaceName: 'Main Workspace',
@@ -100,7 +100,7 @@ export default function UserManagementPage() {
       return;
     }
 
-    if (currentUser.role === 'admin' && userRole === 'admin' && currentUser.id === userId) {
+    if (currentUser.id === userId) {
       alert('You cannot delete yourself');
       return;
     }
@@ -122,17 +122,17 @@ export default function UserManagementPage() {
 
   const canDeleteUser = (user: User) => {
     if (!currentUser) return false;
-    
+
     // Owner can delete anyone except themselves
     if (currentUser.role === 'owner') {
       return user.id !== currentUser.id;
     }
-    
-    // Admin can delete subadmins and other admins (except owners and themselves)
+
+    // Admin can delete admins and subadmins (except owners and themselves)
     if (currentUser.role === 'admin') {
       return user.role !== 'owner' && user.id !== currentUser.id;
     }
-    
+
     return false;
   };
 
@@ -165,7 +165,7 @@ export default function UserManagementPage() {
                 <h1 className="text-2xl font-bold text-[#1F4280]">User Management</h1>
               </div>
               <Link href="/add-user">
-                <Button className="flex items-center space-x-2">
+                <Button size="default" className="flex items-center space-x-2">
                   <FaUserPlus className="h-4 w-4" />
                   <span>Add User</span>
                 </Button>
@@ -202,7 +202,7 @@ export default function UserManagementPage() {
                   <h3 className="text-lg font-medium text-gray-900 mb-2">No users found</h3>
                   <p className="text-gray-600 mb-6">Get started by adding your first user.</p>
                   <Link href="/add-user">
-                    <Button>
+                    <Button size="default" className="">
                       <FaUserPlus className="h-4 w-4 mr-2" />
                       Add User
                     </Button>
@@ -253,12 +253,12 @@ export default function UserManagementPage() {
                             {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                            <Button variant="outline" size="sm">
+                            <Button variant="outline" size="sm" className="">
                               <FaEdit className="h-3 w-3" />
                             </Button>
                             {canDeleteUser(user) && (
-                              <Button 
-                                variant="outline" 
+                              <Button
+                                variant="outline"
                                 size="sm"
                                 onClick={() => handleDeleteUser(user.id, user.role)}
                                 className="text-red-600 hover:text-red-700"

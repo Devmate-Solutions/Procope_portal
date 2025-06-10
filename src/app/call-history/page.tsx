@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
-import { 
+import {
   createColumnHelper,
   flexRender,
   getCoreRowModel,
@@ -12,11 +12,11 @@ import {
   getPaginationRowModel,
   PaginationState,
 } from '@tanstack/react-table';
-import { getCallHistory, getAgentById } from '../api/retell';
-
-// Orasurge Outbound V2 agent ID
-const AGENT_ID = 'agent_a3f5d1a7dd6d0abe1ded29a1fc';
-const API_KEY = process.env.NEXT_PUBLIC_RETELL_API_KEY || '';
+import { FaChevronLeft, FaChevronRight, FaCalendarAlt } from 'react-icons/fa';
+import { getCalls, getAgents } from '@/lib/azure-api';
+import { getCurrentUser } from '@/lib/auth';
+import { useRouter } from 'next/navigation';
+import AuthenticatedLayout from '../components/AuthenticatedLayout';
 
 // Define the type for call data
 type CallRecord = {
@@ -104,54 +104,132 @@ const CallHistoryPage = () => {
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'start_timestamp', desc: true }
   ]);
-  
+
   // State for table pagination
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   });
-  
+
+  // State for week-based pagination
+  const [currentWeekOffset, setCurrentWeekOffset] = useState(0); // 0 = current week, 1 = last week, etc.
+  const [weekDateRange, setWeekDateRange] = useState<{start: Date, end: Date} | null>(null);
+
   // State for data fetching
   const [calls, setCalls] = useState<CallRecord[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
-  
-  // Add state for agent information
-  const [agent, setAgent] = useState<any | null>(null);
-  
-  // Fetch agent details
-  useEffect(() => {
-    const fetchAgentDetails = async () => {
-      try {
-        const agentDetails = await getAgentById(API_KEY, AGENT_ID);
-        setAgent(agentDetails);
-      } catch (error) {
-     
+
+  // Add state for user information
+  const [user, setUser] = useState<any | null>(null);
+  const [agentNames, setAgentNames] = useState<Record<string, string>>({});
+  const router = useRouter();
+
+  // Fetch agent names
+  const fetchAgentNames = async () => {
+    try {
+      const agents = await getAgents();
+      const nameMap: Record<string, string> = {};
+
+      if (Array.isArray(agents)) {
+        agents.forEach((agent: any) => {
+          if (agent.agent_id && agent.agent_name) {
+            nameMap[agent.agent_id] = agent.agent_name;
+          }
+        });
       }
-    };
-    
-    fetchAgentDetails();
-  }, []);
+
+      setAgentNames(nameMap);
+      console.log('📋 Agent names loaded:', nameMap);
+    } catch (error) {
+      console.error('Failed to fetch agent names:', error);
+    }
+  };
+
+  // Helper function to get week date range
+  const getWeekDateRange = (weekOffset: number) => {
+    const now = new Date();
+    const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const daysToSubtract = currentDay === 0 ? 6 : currentDay - 1; // Make Monday the start of week
+
+    // Calculate start of current week (Monday)
+    const startOfCurrentWeek = new Date(now);
+    startOfCurrentWeek.setDate(now.getDate() - daysToSubtract);
+    startOfCurrentWeek.setHours(0, 0, 0, 0);
+
+    // Calculate start and end of the target week
+    const startOfWeek = new Date(startOfCurrentWeek);
+    startOfWeek.setDate(startOfCurrentWeek.getDate() - (weekOffset * 7));
+
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+
+    return { start: startOfWeek, end: endOfWeek };
+  };
+
+  // Initialize user and week range
+  useEffect(() => {
+    const currentUser = getCurrentUser();
+    if (!currentUser) {
+      router.push('/login');
+      return;
+    }
+    setUser(currentUser);
+
+    // Set initial week range
+    const initialWeekRange = getWeekDateRange(currentWeekOffset);
+    setWeekDateRange(initialWeekRange);
+
+    // Fetch agent names
+    fetchAgentNames();
+  }, [router]);
+
+  // Update week range when offset changes
+  useEffect(() => {
+    const newWeekRange = getWeekDateRange(currentWeekOffset);
+    setWeekDateRange(newWeekRange);
+  }, [currentWeekOffset]);
   
   // Fetch call history data
   const fetchData = async () => {
+    if (!user || !weekDateRange) return;
+
     setIsLoading(true);
     try {
-      // Always filter by our target agent ID
-      const filters: any = { 
-        agent_id: AGENT_ID 
+      // Build filters for Azure API - will automatically filter by user's accessible agents
+      const filters: any = {
+        limit: 1000,
+        sort_order: 'descending',
+        // Add date range filters for the current week
+        start_timestamp_after: weekDateRange.start.getTime().toString(),
+        start_timestamp_before: weekDateRange.end.getTime().toString()
       };
-      
-      const data = await getCallHistory(API_KEY, filters);
-      
-      // Additional client-side filtering to ensure we only show data for this agent
-      const filteredData = data.filter(call => call.agent_id === AGENT_ID);
-      
-    
-      setCalls(filteredData);
+
+      console.log('📅 Fetching calls for week:', {
+        start: weekDateRange.start.toLocaleDateString(),
+        end: weekDateRange.end.toLocaleDateString(),
+        weekOffset: currentWeekOffset
+      });
+
+      const data = await getCalls(filters);
+      console.log('📦 Call history response:', data);
+
+      // Handle different response formats from backend
+      let callsArray = [];
+      if (Array.isArray(data)) {
+        callsArray = data;
+      } else if (data.calls && Array.isArray(data.calls)) {
+        callsArray = data.calls;
+      } else if (data.data && Array.isArray(data.data)) {
+        callsArray = data.data;
+      }
+
+      console.log('📞 Processed calls array:', callsArray.length, 'calls');
+      setCalls(callsArray);
       setError(null);
     } catch (err: any) {
-     
+      console.error('Call history fetch error:', err);
       setError(err);
     } finally {
       setIsLoading(false);
@@ -160,12 +238,56 @@ const CallHistoryPage = () => {
   
   // Initial data fetch
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (user && weekDateRange) {
+      fetchData();
+    }
+  }, [user, weekDateRange]);
   
   // Refetch function
   const refetch = () => {
     fetchData();
+  };
+
+  // Week navigation functions
+  const goToPreviousWeek = () => {
+    setCurrentWeekOffset(prev => prev + 1);
+    setPagination(prev => ({ ...prev, pageIndex: 0 })); // Reset to first page
+  };
+
+  const goToNextWeek = () => {
+    if (currentWeekOffset > 0) {
+      setCurrentWeekOffset(prev => prev - 1);
+      setPagination(prev => ({ ...prev, pageIndex: 0 })); // Reset to first page
+    }
+  };
+
+  const goToCurrentWeek = () => {
+    setCurrentWeekOffset(0);
+    setPagination(prev => ({ ...prev, pageIndex: 0 })); // Reset to first page
+  };
+
+  // Helper function to format week range for display
+  const getWeekDisplayText = () => {
+    if (!weekDateRange) return '';
+
+    const startDate = weekDateRange.start.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: weekDateRange.start.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+    });
+    const endDate = weekDateRange.end.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: weekDateRange.end.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+    });
+
+    if (currentWeekOffset === 0) {
+      return `This Week (${startDate} - ${endDate})`;
+    } else if (currentWeekOffset === 1) {
+      return `Last Week (${startDate} - ${endDate})`;
+    } else {
+      return `${currentWeekOffset} Weeks Ago (${startDate} - ${endDate})`;
+    }
   };
   
   // Define table columns
@@ -177,6 +299,25 @@ const CallHistoryPage = () => {
     columnHelper.accessor('call_type', {
       header: 'Type',
       cell: info => info.getValue(),
+    }),
+    columnHelper.accessor('agent_id', {
+      header: 'Agent',
+      cell: info => {
+        const agentId = info.getValue();
+        const agentName = agentNames[agentId];
+
+        if (agentName) {
+          if (agentName.toLowerCase().includes('inbound')) {
+            return <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">Inbound</span>;
+          } else if (agentName.toLowerCase().includes('outbound')) {
+            return <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">Outbound</span>;
+          } else {
+            return <span className="text-xs">{agentName.length > 20 ? agentName.substring(0, 20) + "..." : agentName}</span>;
+          }
+        }
+
+        return <span className="text-xs font-mono">{agentId.substring(0, 12)}...</span>;
+      },
     }),
     columnHelper.accessor('start_timestamp', {
       header: 'Start Time',
@@ -232,35 +373,110 @@ const CallHistoryPage = () => {
   
   // Format agent name for display
   const getAgentName = () => {
-    return agent?.name || 'Orasurge Outbound V2';
+    return user?.workspaceName || 'Your Workspace';
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="container mx-auto px-6 py-12 max-w-7xl">
+    <AuthenticatedLayout>
+      <div className="min-h-screen bg-white">
+        <div className="container mx-auto px-6 py-12 max-w-7xl">
         {/* Header with Logo */}
        
         <div className="p-8">
           <div className="flex justify-between items-center mb-6">
             <div>
               <h1 className="text-2xl font-bold text-primary">Call History</h1>
-              
+              <p className="text-sm text-gray-600 mt-1">{getWeekDisplayText()}</p>
             </div>
-            <button 
-              className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
-              onClick={() => refetch()}
-              disabled={isLoading}
-            >
-              {isLoading ? 'Refreshing...' : 'Refresh Data'}
-            </button>
+            <div className="flex items-center space-x-3">
+              <button
+                className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
+                onClick={() => refetch()}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Refreshing...' : 'Refresh Data'}
+              </button>
+            </div>
+          </div>
+
+          {/* Week Navigation */}
+          <div className="flex items-center justify-between mb-6 p-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center space-x-4">
+              <FaCalendarAlt className="text-gray-500" />
+              <span className="font-medium text-gray-700">Week Navigation:</span>
+              <span className="text-sm text-gray-600">{getWeekDisplayText()}</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={goToPreviousWeek}
+                className="flex items-center px-3 py-2 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                disabled={isLoading}
+              >
+                <FaChevronLeft className="mr-1" />
+                Previous Week
+              </button>
+
+              {currentWeekOffset > 0 && (
+                <button
+                  onClick={goToCurrentWeek}
+                  className="px-3 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  disabled={isLoading}
+                >
+                  Current Week
+                </button>
+              )}
+
+              <button
+                onClick={goToNextWeek}
+                disabled={currentWeekOffset === 0 || isLoading}
+                className={`flex items-center px-3 py-2 text-sm rounded-md transition-colors ${
+                  currentWeekOffset === 0
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-white border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                Next Week
+                <FaChevronRight className="ml-1" />
+              </button>
+            </div>
           </div>
           
-          {/* Display an info alert that we're only showing data for this agent */}
+          {/* Display workspace info */}
           <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded relative mb-6">
-            <strong className="font-bold">Note:</strong>
-            <span className="block sm:inline"> Only showing call history for agent {getAgentName()}.</span>
+            <strong className="font-bold">Workspace:</strong>
+            <span className="block sm:inline"> {getAgentName()} - {user?.agentIds?.length || 0} agent(s) accessible</span>
           </div>
-          
+
+          {/* Week Summary */}
+          {!isLoading && calls.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white p-4 rounded-lg shadow">
+                <div className="text-sm text-gray-500">Total Calls</div>
+                <div className="text-2xl font-bold text-gray-900">{calls.length}</div>
+              </div>
+              <div className="bg-white p-4 rounded-lg shadow">
+                <div className="text-sm text-gray-500">Successful Calls</div>
+                <div className="text-2xl font-bold text-green-600">
+                  {calls.filter(call => call.call_status === 'completed').length}
+                </div>
+              </div>
+              <div className="bg-white p-4 rounded-lg shadow">
+                <div className="text-sm text-gray-500">Failed Calls</div>
+                <div className="text-2xl font-bold text-red-600">
+                  {calls.filter(call => call.call_status === 'failed' || call.call_status === 'error').length}
+                </div>
+              </div>
+              <div className="bg-white p-4 rounded-lg shadow">
+                <div className="text-sm text-gray-500">Average Duration</div>
+                <div className="text-2xl font-bold text-blue-600">
+                  {calls.length > 0
+                    ? Math.round(calls.reduce((sum, call) => sum + (call.duration_ms || 0), 0) / calls.length / 1000)
+                    : 0}s
+                </div>
+              </div>
+            </div>
+          )}
+
           {error ? (
             <div className="bg-red-100 text-red-700 p-4 rounded-md mb-6">
               {error instanceof Error ? error.message : 'Failed to load call history'}
@@ -598,8 +814,9 @@ const CallHistoryPage = () => {
             </div>
           )}
         </div>
+        </div>
       </div>
-    </div>
+    </AuthenticatedLayout>
   );
 };
 

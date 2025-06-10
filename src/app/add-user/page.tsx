@@ -136,7 +136,7 @@ export default function AddUserPage() {
             <div className="flex justify-between items-center h-16">
               <div className="flex items-center space-x-4">
                 <Link href="/user-management">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" className="">
                     <FaArrowLeft className="h-4 w-4 mr-2" />
                     Back
                   </Button>
@@ -203,15 +203,17 @@ export default function AddUserPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="subadmin">Sub Admin</SelectItem>
-                      {currentUser.role === 'owner' && (
+                      {(currentUser.role === 'owner' || currentUser.role === 'admin') && (
                         <SelectItem value="admin">Admin</SelectItem>
                       )}
                     </SelectContent>
                   </Select>
                   <p className="text-sm text-gray-500">
-                    {currentUser.role === 'owner' 
-                      ? 'Owners can create both Admin and Sub Admin users'
-                      : 'Admins can only create Sub Admin users'
+                    {currentUser.role === 'owner'
+                      ? 'Owners can create both Admin and Sub Admin accounts'
+                      : currentUser.role === 'admin'
+                      ? 'Admins can create both Admin and Sub Admin accounts'
+                      : 'You can only create Sub Admin accounts'
                     }
                   </p>
                 </div>
@@ -284,11 +286,11 @@ export default function AddUserPage() {
                 {/* Submit Button */}
                 <div className="flex justify-end space-x-4">
                   <Link href="/user-management">
-                    <Button variant="outline" type="button">
+                    <Button variant="outline" size="default" type="button" className="">
                       Cancel
                     </Button>
                   </Link>
-                  <Button type="submit" disabled={isLoading}>
+                  <Button variant="default" type="submit" size="default" disabled={isLoading} className="">
                     {isLoading ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>

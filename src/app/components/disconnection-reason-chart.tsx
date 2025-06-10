@@ -10,10 +10,11 @@ import { useState } from "react"
 import Link from "next/link"
 
 interface DisconnectionReasonChartProps {
-  data: any[]
+  data: any[] | any
   title?: string
   agent?: string
   dateRange?: { from: Date; to: Date } | undefined
+  aggregatedData?: boolean
 }
 
 export function DisconnectionReasonChart({
@@ -21,18 +22,55 @@ export function DisconnectionReasonChart({
   title = "Disconnection Reason",
   agent = "All agents",
   dateRange,
+  aggregatedData = false,
 }: DisconnectionReasonChartProps) {
   const [showDetailedView, setShowDetailedView] = useState(false)
 
   const calculateDisconnectionReasons = () => {
-    let filteredData = data
+    // Handle aggregated data from analytics API
+    if (aggregatedData && typeof data === 'object' && !Array.isArray(data)) {
+      const colorMap: Record<string, string> = {
+        user_hangup: "#60a5fa",
+        agent_hangup: "#f97316",
+        dial_no_answer: "#ef4444",
+        dial_busy: "#8b5cf6",
+        dial_failed: "#10b981",
+        inactivity: "#f59e0b",
+        max_duration_reached: "#06b6d4",
+        no_valid_payment: "#ec4899",
+        other: "#94a3b8"
+      };
+
+      const labelMap: Record<string, string> = {
+        user_hangup: "User hangup",
+        agent_hangup: "Agent hangup",
+        dial_no_answer: "Dial no answer",
+        dial_busy: "Dial busy",
+        dial_failed: "Dial failed",
+        inactivity: "Inactivity",
+        max_duration_reached: "Max duration",
+        no_valid_payment: "No valid payment",
+        other: "Other"
+      };
+
+      return Object.entries(data)
+        .filter(([_, count]) => count > 0)
+        .map(([reason, count]) => ({
+          name: labelMap[reason] || reason,
+          value: count as number,
+          color: colorMap[reason] || "#94a3b8"
+        }));
+    }
+
+    // Handle individual call data (original logic)
+    let filteredData = Array.isArray(data) ? data : [];
 
     // Filter by date range if provided
     if (dateRange?.from && dateRange?.to) {
       const fromTime = dateRange.from.getTime()
       const toTime = dateRange.to.getTime() + (24 * 60 * 60 * 1000 - 1)
 
-      filteredData = data.filter((call) => {
+      filteredData = filteredData.filter((call) => {
         if (!call.start_timestamp) return false
         const callTime = new Date(call.start_timestamp).getTime()
         return callTime >= fromTime && callTime <= toTime

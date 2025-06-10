@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dashboard - Mydent",
-  description: "Dashboard for managing Mydent AI phone calls and analytics",
+  title: "My Dent AI Dashboard",
+  description: "Multi-tenant Retell AI voice agent management system",
 };
 
 export default function RootLayout({
@@ -29,18 +29,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 min-h-screen`}
       >
-       
-          <div className="flex h-screen overflow-hidden">
-            <div className="h-full">
-              <Sidebar />
-            </div>
-            <div className="flex flex-col flex-1 overflow-x-hidden overflow-y-auto">
-              <main className="flex-grow">
-                {children}
-              </main>
-            </div>
-          </div>
-
+        {children}
       </body>
     </html>
   );

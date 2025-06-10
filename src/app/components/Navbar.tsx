@@ -1,14 +1,34 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { FaTooth, FaBell, FaUserCircle } from 'react-icons/fa';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { FaTooth, FaBell, FaUserCircle, FaSignOutAlt } from 'react-icons/fa';
+import { getCurrentUser, logout } from '@/lib/auth';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 export default function Navbar() {
   const pathname = usePathname();
-  
+  const router = useRouter();
+  const [user, setUser] = useState<any>(null);
+
   const isActive = (path: string) => {
     return pathname === path || pathname?.startsWith(`${path}/`);
+  };
+
+  useEffect(() => {
+    const currentUser = getCurrentUser();
+    setUser(currentUser);
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
   
   return (
@@ -19,7 +39,7 @@ export default function Navbar() {
             <div className="flex-shrink-0 flex items-center">
               <Link href="/" className="flex items-center space-x-2">
                 <FaTooth className="h-8 w-8 text-teal-600" />
-                <span className="text-xl font-bold text-gray-800">DentCare</span>
+                <span className="text-xl font-bold text-gray-800">{user?.workspaceName || 'Dashboard'}</span>
               </Link>
             </div>
           </div>
@@ -30,23 +50,36 @@ export default function Navbar() {
               <FaBell className="h-5 w-5" />
             </button>
 
-            {/* API Status Badge */}
-            <span className={`px-3 py-1.5 text-xs font-medium rounded-full ${
-              process.env.NEXT_PUBLIC_RETELL_API_KEY 
-                ? 'bg-teal-50 text-teal-700'
-                : 'bg-amber-50 text-amber-700'
-            }`}>
-              {process.env.NEXT_PUBLIC_RETELL_API_KEY ? 'Connected' : 'Demo Mode'}
-            </span>
+            {/* Workspace Badge */}
+            {/* <span className="px-3 py-1.5 text-xs font-medium rounded-full bg-blue-50 text-blue-700">
+              Azure Connected
+            </span> */}
 
             {/* User Profile */}
-            <div className="flex items-center space-x-3 pl-3 border-l border-gray-200">
-              <FaUserCircle className="h-8 w-8 text-gray-400" />
-              <div className="hidden md:block">
-                <p className="text-sm font-medium text-gray-700">Dr. Smith</p>
-                <p className="text-xs text-gray-500">Admin</p>
+            {user && (
+              <div className="flex items-center space-x-3 pl-3 border-l border-gray-200">
+                <FaUserCircle className="h-8 w-8 text-gray-400" />
+                <div className="hidden md:block">
+                  <p className="text-sm font-medium text-gray-700">{user.displayName || 'User'}</p>
+                </div>
+                {/* Only show role badge for admin and owner (not subadmin) */}
+                {(user.role === 'admin' || user.role === 'owner') && (
+                  <Badge variant={user.role === 'owner' ? 'default' : 'secondary'} className="text-xs">
+                    {user.role}
+                  </Badge>
+                )}
+                {/* Logout Button */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLogout}
+                  className="flex items-center space-x-1"
+                >
+                  <FaSignOutAlt className="h-3 w-3" />
+                  <span className="hidden sm:inline">Logout</span>
+                </Button>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

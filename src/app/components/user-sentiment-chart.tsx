@@ -10,10 +10,11 @@ import { useState } from "react"
 import Link from "next/link"
 
 interface UserSentimentChartProps {
-  data: any[]
+  data: any[] | any
   title?: string
   agent?: string
   dateRange?: { from: Date; to: Date } | undefined
+  aggregatedData?: boolean
 }
 
 export function UserSentimentChart({
@@ -21,18 +22,38 @@ export function UserSentimentChart({
   title = "User Sentiment",
   agent = "All agents",
   dateRange,
+  aggregatedData = false,
 }: UserSentimentChartProps) {
   const [showDetailedView, setShowDetailedView] = useState(false)
 
   const calculateSentimentDistribution = () => {
-    let filteredData = data
+    // Handle aggregated data from analytics API
+    if (aggregatedData && typeof data === 'object' && !Array.isArray(data)) {
+      const colorMap: Record<string, string> = {
+        Positive: "#10b981",
+        Neutral: "#a855f7",
+        Negative: "#ef4444",
+        Unknown: "#94a3b8"
+      };
+
+      return Object.entries(data)
+        .filter(([_, count]) => count > 0)
+        .map(([sentiment, count]) => ({
+          name: sentiment,
+          value: count as number,
+          color: colorMap[sentiment] || "#94a3b8"
+        }));
+    }
+
+    // Handle individual call data (original logic)
+    let filteredData = Array.isArray(data) ? data : [];
 
     // Filter by date range if provided
     if (dateRange?.from && dateRange?.to) {
       const fromTime = dateRange.from.getTime()
       const toTime = dateRange.to.getTime() + (24 * 60 * 60 * 1000 - 1)
 
-      filteredData = data.filter((call) => {
+      filteredData = filteredData.filter((call) => {
         if (!call.start_timestamp) return false
         const callTime = new Date(call.start_timestamp).getTime()
         return callTime >= fromTime && callTime <= toTime
