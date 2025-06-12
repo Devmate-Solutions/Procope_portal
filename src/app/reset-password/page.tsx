@@ -44,7 +44,7 @@ export default function ResetPasswordPage() {
     try {
       // Call the API to reset password
       const response = await fetch(
-        `https://func-retell425.azurewebsites.net/api/users/reset-password`,
+        `https://func-retell425.azurewebsites.net/api/user/reset-password`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
