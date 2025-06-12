@@ -15,6 +15,7 @@ import {
 import { getCurrentUser } from '@/lib/auth';
 import AuthenticatedLayout from '../components/AuthenticatedLayout';
 import Link from 'next/link';
+import { Dialog } from '@headlessui/react';
 
 interface User {
   id: string;
@@ -33,6 +34,11 @@ export default function UserManagementPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editUser, setEditUser] = useState<User | null>(null);
+  const [editForm, setEditForm] = useState({ email: '', displayName: '', role: 'subadmin' });
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -96,15 +102,29 @@ export default function UserManagementPage() {
 
     if (confirm('Are you sure you want to delete this user?')) {
       try {
-        // TODO: Replace with actual API call when provided
-        // await deleteUser(userId);
-        
-        // Mock deletion for now
-        setUsers(users.filter(user => user.id !== userId));
-        console.log(`User ${userId} deleted`);
+        setIsLoading(true);
+        setError(null);
+        const token = localStorage.getItem('auth_token');
+        if (!token) throw new Error('Not authenticated');
+        const response = await fetch(`https://func-retell425.azurewebsites.net/api/users/${userId}`,
+          {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          }
+        );
+        const data = await response.json();
+        if (data.success) {
+          setUsers(users.filter(user => user.id !== userId));
+        } else {
+          setError(data.error || 'Failed to delete user');
+        }
       } catch (err: any) {
         console.error('Failed to delete user:', err);
         setError('Failed to delete user');
+      } finally {
+        setIsLoading(false);
       }
     }
   };
@@ -135,6 +155,71 @@ export default function UserManagementPage() {
         return 'outline';
       default:
         return 'outline';
+    }
+  };
+
+  const openEditModal = (user: User) => {
+    setEditUser(user);
+    setEditForm({ email: user.email, displayName: user.displayName, role: user.role });
+    setEditError(null);
+    setIsEditOpen(true);
+  };
+
+  const closeEditModal = () => {
+    setIsEditOpen(false);
+    setEditUser(null);
+    setEditError(null);
+  };
+
+  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setEditForm({ ...editForm, [e.target.name]: e.target.value });
+  };
+
+  const handleEditSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editUser) return;
+    setEditLoading(true);
+    setEditError(null);
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) throw new Error('Not authenticated');
+      const response = await fetch(`https://func-retell425.azurewebsites.net/api/users/${editUser.id}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            email: editForm.email,
+            displayName: editForm.displayName,
+            role: editForm.role,
+            agentIds: currentUser.agentIds || [],
+            workspaceId: currentUser.workspaceId,
+          }),
+        }
+      );
+      const data = await response.json();
+      if (data.success) {
+        setUsers(users.map(u =>
+          u.id === editUser.id
+            ? {
+                ...u,
+                email: editForm.email,
+                displayName: editForm.displayName,
+                role: editForm.role as 'owner' | 'admin' | 'subadmin',
+              }
+            : u
+        ));
+        closeEditModal();
+        fetchUsers();
+      } else {
+        setEditError(data.error || 'Failed to update user');
+      }
+    } catch (err: any) {
+      setEditError(err.message || 'Failed to update user');
+    } finally {
+      setEditLoading(false);
     }
   };
 
@@ -242,7 +327,7 @@ export default function UserManagementPage() {
                             {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                            <Button variant="outline" size="sm" className="">
+                            <Button variant="outline" size="sm" className="" onClick={() => openEditModal(user)}>
                               <FaEdit className="h-3 w-3" />
                             </Button>
                             {canDeleteUser(user) && (
@@ -266,6 +351,39 @@ export default function UserManagementPage() {
           </Card>
         </main>
       </div>
+
+      {/* Edit User Modal */}
+      <Dialog open={isEditOpen} onClose={closeEditModal} className="fixed z-50 inset-0 overflow-y-auto">
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="fixed inset-0 bg-black opacity-30" aria-hidden="true" />
+          <div className="relative bg-white rounded-lg shadow-lg p-8 w-full max-w-md z-10">
+            <Dialog.Title className="text-lg font-bold mb-4">Edit User</Dialog.Title>
+            {editError && <div className="mb-2 text-red-600">{editError}</div>}
+            <form onSubmit={handleEditSave} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Email</label>
+                <input name="email" type="email" value={editForm.email} onChange={handleEditChange} className="w-full border rounded px-3 py-2" required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Display Name</label>
+                <input name="displayName" value={editForm.displayName} onChange={handleEditChange} className="w-full border rounded px-3 py-2" required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Role</label>
+                <select name="role" value={editForm.role} onChange={handleEditChange} className="w-full border rounded px-3 py-2">
+                  <option value="owner">Owner</option>
+                  <option value="admin">Admin</option>
+                  <option value="subadmin">Sub Admin</option>
+                </select>
+              </div>
+              <div className="flex justify-end space-x-2 mt-4">
+                <button type="button" onClick={closeEditModal} className="px-4 py-2 rounded bg-gray-200">Cancel</button>
+                <button type="submit" disabled={editLoading} className="px-4 py-2 rounded bg-blue-600 text-white">{editLoading ? 'Saving...' : 'Save'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </Dialog>
     </AuthenticatedLayout>
   );
 }
