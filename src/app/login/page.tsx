@@ -17,6 +17,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [passwordChangeRequired, setPasswordChangeRequired] = useState(false)
   const router = useRouter()
 
   // Check if user is already logged in
@@ -42,6 +43,7 @@ export default function LoginPage() {
     try {
       setIsLoading(true);
       setError('');
+      setPasswordChangeRequired(false);
 
       console.log('🔄 Attempting login with:', { email, password: '***' });
       const result = await login(email, password);
@@ -54,8 +56,14 @@ export default function LoginPage() {
           router.push('/dashboard');
         }, 100);
       } else {
-        console.log('❌ Login failed:', result.error);
-        setError(result.error || 'Login failed');
+        // Check for password change required message
+        if (result.error && result.error.toLowerCase().includes('password change required')) {
+          setPasswordChangeRequired(true);
+          setError('Password change required. Please set a new password.');
+        } else {
+          console.log('❌ Login failed:', result.error);
+          setError(result.error || 'Login failed');
+        }
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -87,6 +95,17 @@ export default function LoginPage() {
             {error && (
               <div className="text-red-500 text-sm text-center bg-red-50 p-3 rounded-md">
                 {error}
+                {passwordChangeRequired && (
+                  <div className="mt-2">
+                    <button
+                      type="button"
+                      className="text-blue-600 underline text-sm"
+                      onClick={() => router.push(`/reset-password?email=${encodeURIComponent(email)}`)}
+                    >
+                      Set a new password
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

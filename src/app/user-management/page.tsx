@@ -18,13 +18,14 @@ import Link from 'next/link';
 
 interface User {
   id: string;
-  username: string;
   email: string;
+  displayName: string;
   role: 'owner' | 'admin' | 'subadmin';
-  workspaceName: string;
-  createdAt: string;
+  agentIds?: string[];
+  workspaceName?: string;
+  createdAt?: string;
   lastLogin?: string;
-  isActive: boolean;
+  isActive?: boolean;
 }
 
 export default function UserManagementPage() {
@@ -54,38 +55,26 @@ export default function UserManagementPage() {
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
-      // TODO: Replace with actual API call when provided
-      // const response = await getUserList();
-      
-      // Mock data for now
-      const mockUsers: User[] = [
-        {
-          id: '1',
-          username: 'john_admin',
-          email: 'john@example.com',
-          role: 'admin',
-          workspaceName: 'Main Workspace',
-          createdAt: '2024-01-15',
-          lastLogin: '2024-01-20',
-          isActive: true
-        },
-        {
-          id: '2',
-          username: 'jane_subadmin',
-          email: 'jane@example.com',
-          role: 'subadmin',
-          workspaceName: 'Main Workspace',
-          createdAt: '2024-01-10',
-          lastLogin: '2024-01-19',
-          isActive: true
-        }
-      ];
-      
-      setUsers(mockUsers);
       setError(null);
+      // Get auth token
+      const token = localStorage.getItem('auth_token');
+      if (!token) throw new Error('Not authenticated');
+      const response = await fetch('https://func-retell425.azurewebsites.net/api/users', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      if (data.success && Array.isArray(data.users)) {
+        setUsers(data.users);
+      } else {
+        setError(data.error || 'Failed to load users');
+        setUsers([]);
+      }
     } catch (err: any) {
       console.error('Failed to fetch users:', err);
       setError('Failed to load users');
+      setUsers([]);
     } finally {
       setIsLoading(false);
     }
@@ -165,7 +154,7 @@ export default function UserManagementPage() {
                 <h1 className="text-2xl font-bold text-[#1F4280]">User Management</h1>
               </div>
               <Link href="/add-user">
-                <Button size="default" className="flex items-center space-x-2">
+                <Button variant="default" size="default" className="flex items-center space-x-2">
                   <FaUserPlus className="h-4 w-4" />
                   <span>Add User</span>
                 </Button>
@@ -202,7 +191,7 @@ export default function UserManagementPage() {
                   <h3 className="text-lg font-medium text-gray-900 mb-2">No users found</h3>
                   <p className="text-gray-600 mb-6">Get started by adding your first user.</p>
                   <Link href="/add-user">
-                    <Button size="default" className="">
+                    <Button variant="default" size="default" className="">
                       <FaUserPlus className="h-4 w-4 mr-2" />
                       Add User
                     </Button>
@@ -235,7 +224,7 @@ export default function UserManagementPage() {
                         <tr key={user.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div>
-                              <div className="text-sm font-medium text-gray-900">{user.username}</div>
+                              <div className="text-sm font-medium text-gray-900">{user.displayName}</div>
                               <div className="text-sm text-gray-500">{user.email}</div>
                             </div>
                           </td>

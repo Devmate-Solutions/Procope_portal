@@ -21,23 +21,19 @@ import AuthenticatedLayout from '../components/AuthenticatedLayout';
 import Link from 'next/link';
 
 interface AddUserForm {
-  username: string;
   email: string;
+  displayName: string;
   password: string;
-  role: 'admin' | 'subadmin';
-  isTemporaryPassword: boolean;
-  forcePasswordChange: boolean;
+  role: 'owner' | 'admin' | 'subadmin';
 }
 
 export default function AddUserPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [formData, setFormData] = useState<AddUserForm>({
-    username: '',
     email: '',
+    displayName: '',
     password: '',
     role: 'subadmin',
-    isTemporaryPassword: true,
-    forcePasswordChange: true
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -70,7 +66,7 @@ export default function AddUserPage() {
     setFormData(prev => ({ ...prev, password }));
   };
 
-  const handleInputChange = (field: keyof AddUserForm, value: string | boolean) => {
+  const handleInputChange = (field: keyof AddUserForm, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -81,7 +77,7 @@ export default function AddUserPage() {
     setSuccess(null);
 
     // Basic validation
-    if (!formData.username || !formData.email || !formData.password) {
+    if (!formData.email || !formData.displayName || !formData.password) {
       setError('Please fill in all required fields');
       setIsLoading(false);
       return;
@@ -94,30 +90,43 @@ export default function AddUserPage() {
     }
 
     try {
-      // TODO: Replace with actual API call when provided
-      // const response = await createUser(formData);
-      
-      // Mock success for now
-      console.log('Creating user with data:', formData);
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setSuccess(`User ${formData.username} created successfully!`);
-      
-      // Reset form
-      setFormData({
-        username: '',
-        email: '',
-        password: '',
-        role: 'subadmin',
-        isTemporaryPassword: true,
-        forcePasswordChange: true
+      // Compose payload
+      const payload = {
+        email: formData.email,
+        displayName: formData.displayName,
+        role: formData.role,
+        password: formData.password,
+        agentIds: currentUser.agentIds || [],
+        workspaceId: currentUser.workspaceId,
+      };
+
+      // Get auth token
+      const token = localStorage.getItem('auth_token');
+      if (!token) throw new Error('Not authenticated');
+
+      const response = await fetch('https://func-retell425.azurewebsites.net/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
       });
-      
+
+      const data = await response.json();
+      if (data.success) {
+        setSuccess('User added successfully!');
+        setFormData({
+          email: '',
+          displayName: '',
+          password: '',
+          role: 'subadmin',
+        });
+      } else {
+        setError(data.error || 'Failed to add user');
+      }
     } catch (err: any) {
-      console.error('Failed to create user:', err);
-      setError(err.message || 'Failed to create user');
+      setError(err.message || 'Failed to add user');
     } finally {
       setIsLoading(false);
     }
@@ -168,19 +177,6 @@ export default function AddUserPage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Username */}
-                <div className="space-y-2">
-                  <Label htmlFor="username">Username *</Label>
-                  <Input
-                    id="username"
-                    type="text"
-                    value={formData.username}
-                    onChange={(e) => handleInputChange('username', e.target.value)}
-                    placeholder="Enter username"
-                    required
-                  />
-                </div>
-
                 {/* Email */}
                 <div className="space-y-2">
                   <Label htmlFor="email">Email *</Label>
@@ -189,15 +185,26 @@ export default function AddUserPage() {
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
-                    placeholder="Enter email address"
+                    placeholder="Enter email"
                     required
                   />
                 </div>
-
+                {/* Display Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="displayName">Display Name *</Label>
+                  <Input
+                    id="displayName"
+                    type="text"
+                    value={formData.displayName}
+                    onChange={(e) => handleInputChange('displayName', e.target.value)}
+                    placeholder="Enter display name"
+                    required
+                  />
+                </div>
                 {/* Role */}
                 <div className="space-y-2">
                   <Label htmlFor="role">Role *</Label>
-                  <Select value={formData.role} onValueChange={(value: 'admin' | 'subadmin') => handleInputChange('role', value)}>
+                  <Select value={formData.role} onValueChange={(value: 'owner' | 'admin' | 'subadmin') => handleInputChange('role', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select role" />
                     </SelectTrigger>
@@ -206,18 +213,20 @@ export default function AddUserPage() {
                       {(currentUser.role === 'owner' || currentUser.role === 'admin') && (
                         <SelectItem value="admin">Admin</SelectItem>
                       )}
+                      {currentUser.role === 'owner' && (
+                        <SelectItem value="owner">Owner</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                   <p className="text-sm text-gray-500">
                     {currentUser.role === 'owner'
-                      ? 'Owners can create both Admin and Sub Admin accounts'
+                      ? 'Owners can create Owner, Admin, and Sub Admin accounts'
                       : currentUser.role === 'admin'
-                      ? 'Admins can create both Admin and Sub Admin accounts'
+                      ? 'Admins can create Admin and Sub Admin accounts'
                       : 'You can only create Sub Admin accounts'
                     }
                   </p>
                 </div>
-
                 {/* Password */}
                 <div className="space-y-2">
                   <Label htmlFor="password">Password *</Label>
@@ -257,32 +266,16 @@ export default function AddUserPage() {
                     Password must be at least 8 characters long
                   </p>
                 </div>
-
-                {/* Password Options */}
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="isTemporaryPassword"
-                      checked={formData.isTemporaryPassword}
-                      onCheckedChange={(checked) => handleInputChange('isTemporaryPassword', checked as boolean)}
-                    />
-                    <Label htmlFor="isTemporaryPassword" className="text-sm">
-                      This is a temporary password
-                    </Label>
+                {/* Workspace Agent IDs Info */}
+                <div className="space-y-2">
+                  <Label>Workspace Agent IDs</Label>
+                  <div className="p-3 bg-gray-50 rounded border text-gray-700">
+                    {currentUser.agentIds && currentUser.agentIds.length > 0
+                      ? `Agent IDs: ${currentUser.agentIds.join(', ')}`
+                      : 'No agent IDs available in current workspace'}
                   </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="forcePasswordChange"
-                      checked={formData.forcePasswordChange}
-                      onCheckedChange={(checked) => handleInputChange('forcePasswordChange', checked as boolean)}
-                    />
-                    <Label htmlFor="forcePasswordChange" className="text-sm">
-                      Force password change on first login
-                    </Label>
-                  </div>
+                  <small className="text-gray-500 italic">These will be automatically assigned to the new user</small>
                 </div>
-
                 {/* Submit Button */}
                 <div className="flex justify-end space-x-4">
                   <Link href="/user-management">
