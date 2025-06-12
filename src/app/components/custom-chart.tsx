@@ -241,7 +241,7 @@ export function CustomChart({
             <div className="text-center">
               <div className="text-4xl font-bold">{numberValue}</div>
               <div className="text-gray-500 mt-2">{numberLabel}</div>
-              {filteredData.length > 1 && (
+              {filteredData && filteredData.length > 1 && (
                 <div
                   className={`flex items-center justify-center mt-2 text-sm ${trendInfo.isPositive ? "text-green-600" : "text-red-600"}`}
                 >
@@ -251,7 +251,7 @@ export function CustomChart({
                 </div>
               )}
               <div className="text-xs text-gray-400 mt-1">
-                {filteredData.length} data points
+                {filteredData ? filteredData.length : 0} data points
                 {dateRange && (
                   <span className="block">
                     {dateRange.from.toLocaleDateString()} - {dateRange.to.toLocaleDateString()}
@@ -451,7 +451,7 @@ export function CustomChart({
               </div>
 
               {/* Comparative Analysis */}
-              {filteredData.length > 1 && (
+              {filteredData && filteredData.length > 1 && (
                 <div className="bg-white border rounded-lg p-6 space-y-4">
                   <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">
                     Comparative Analysis
@@ -497,7 +497,7 @@ export function CustomChart({
                     {title} Visualization
                   </h3>
                   <div className="text-sm text-gray-600 flex items-center space-x-3">
-                    <span>{filteredData.length} data points</span>
+                    <span>{filteredData ? filteredData.length : 0} data points</span>
                     <div className="h-4 w-px bg-gray-300 mx-2"></div>
                     <span className="text-xs text-gray-500">
                       {chartType} Chart • {metric}

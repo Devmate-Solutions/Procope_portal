@@ -10,14 +10,16 @@ import { Expand } from "lucide-react"
 import Link from "next/link"
 
 interface CallTrendsChartProps {
-  data: any[]
+  data?: any[]
+  calls?: any[]
   title?: string
   agent?: string
   dateRange?: { from: Date; to: Date } | undefined
 }
 
 export function CallTrendsChart({
-  data,
+  data = [],
+  calls = [],
   title = "Call Counts",
   agent = "All agents",
   dateRange,
@@ -27,23 +29,48 @@ export function CallTrendsChart({
 
   // Filter and format data for area chart based on date range
   const chartData = useMemo(() => {
-    let filteredData = data
+    // If we have calls data instead of formatted data, process it
+    if (calls && calls.length > 0 && (!data || data.length === 0)) {
+      // Group calls by date
+      const callsByDate: Record<string, number> = {};
+      
+      calls.forEach((call: any) => {
+        if (call.start_timestamp) {
+          const date = new Date(call.start_timestamp).toDateString();
+          callsByDate[date] = (callsByDate[date] || 0) + 1;
+        }
+      });
 
-    if (dateRange?.from && dateRange?.to) {
+      // Convert to chart format
+      return Object.entries(callsByDate).map(([date, count]) => ({
+        date: new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        value: count,
+      })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }
+
+    // Use provided data if available
+    let filteredData = data || [];
+
+    if (dateRange?.from && dateRange?.to && filteredData.length > 0) {
       const fromTime = dateRange.from.getTime()
       const toTime = dateRange.to.getTime() + (24 * 60 * 60 * 1000 - 1)
 
-      filteredData = data.filter((item) => {
+      filteredData = filteredData.filter((item) => {
         const itemDate = new Date(item.date).getTime()
         return itemDate >= fromTime && itemDate <= toTime
       })
+    }
+
+    // Safety check to prevent undefined error
+    if (!filteredData || !Array.isArray(filteredData)) {
+      return [];
     }
 
     return filteredData.map((item) => ({
       date: new Date(item.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
       value: item.calls,
     }))
-  }, [data, dateRange])
+  }, [data, calls, dateRange])
 
   return (
     <Card className="w-full group">

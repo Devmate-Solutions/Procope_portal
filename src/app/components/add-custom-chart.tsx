@@ -72,7 +72,7 @@ export function AddCustomChart({ onSave, onCancel, availableAgents, analyticsDat
   }
 
   const generateRealPreviewData = () => {
-    if (!analyticsData.rawCalls || analyticsData.rawCalls.length === 0) {
+    if (!analyticsData || !analyticsData.rawCalls || analyticsData.rawCalls.length === 0) {
       const sampleData = generateSampleData()
       setPreviewData(sampleData)
       return

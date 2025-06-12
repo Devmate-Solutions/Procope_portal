@@ -1,4 +1,6 @@
 "use client"
+// Add router to the component
+
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
@@ -18,6 +20,7 @@ import { UserSentimentChart } from "./user-sentiment-chart"
 import { CustomChart } from "./custom-chart"
 import { getAnalytics, getCurrentUser, getUserAgentIds, getAgents } from '@/lib/azure-api'
 import { getCurrentUser as getAuthUser } from '@/lib/auth'
+import { LocalStorage } from "@azure/msal-browser"
 
 
 interface AnalyticsData {
@@ -55,6 +58,7 @@ export function Analytics() {
     rawCalls: [],
     apiStatus: "loading",
   })
+  const router = useRouter()
   const [dateRange, setDateRange] = useState("All time")
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange | undefined>()
   const [selectedAgentId, setSelectedAgentId] = useState<string>("")
@@ -76,28 +80,90 @@ export function Analytics() {
   const [error, setError] = useState<string | null>(null)
   const [user, setUser] = useState<any>(null)
   const [agentNames, setAgentNames] = useState<Record<string, string>>({})
+  const [phoneNumbers, setPhoneNumbers] = useState<any[]>([])
+  const [availableAgentIds, setAvailableAgentIds] = useState<string[]>([]) // Store API agent IDs
 
-  // Add router to the component
-  const router = useRouter()
 
-  // Fetch agent names
+  
+  // Helper function to get agent display name (same logic as create calls)
+  const getAgentDisplayName = (agentId: string): string => {
+    // Check if this agent ID is mapped in agentNames
+    const agentName = agentNames[agentId];//
+  //  console.log("lastagent",agentName,agentNames,agentId);
+    if (agentName) {
+      // Extract just "Inbound Agent" or "Outbound Agent" without phone number
+      if (agentName.toLowerCase().includes('inbound')) {
+        return "Inbound Agent";
+      } else if (agentName.toLowerCase().includes('outbound')) {
+        return "Outbound Agent";
+      }
+      return agentName;
+    }
+    
+    // Fallback if no mapping found
+    return `Agent: ${agentId.substring(0, 8)}...`;
+  }
+
+  // Fetch agent names directly from API (same logic as create calls)
   const fetchAgentNames = async () => {
     try {
-      const agents = await getAgents();
-      const nameMap: Record<string, string> = {};
+      // Get bearer token from localstorage
+      const token = localStorage.getItem("auth_token");
+    
+      console.log(token);
+      // Call API directly
+      const response = await fetch('https://func-retell425.azurewebsites.net/api/retell/phone-number', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-      if (Array.isArray(agents)) {
-        agents.forEach((agent: any) => {
-          if (agent.agent_id && agent.agent_name) {
-            nameMap[agent.agent_id] = agent.agent_name;
+      if (!response.ok) {
+        throw new Error(`API call failed: ${response.status}`);
+      }
+
+      const phoneNumbersData = await response.json();
+      const nameMap: Record<string, string> = {};
+      const availableAgentIds: string[] = [];
+      console.log("AGENTS from API:", phoneNumbersData);
+
+      if (Array.isArray(phoneNumbersData)) {
+        setPhoneNumbers(phoneNumbersData);
+        
+        // Process all agents from all phone numbers (same as create calls)
+        phoneNumbersData.forEach((phoneData: any) => {
+          // Add inbound agent if exists
+          if (phoneData.inbound_agent_id) {
+            nameMap[phoneData.inbound_agent_id] = `Inbound Agent (${phoneData.phone_number_pretty})`;
+            availableAgentIds.push(phoneData.inbound_agent_id);
+          }
+          // Add outbound agent if exists
+          if (phoneData.outbound_agent_id) {
+            nameMap[phoneData.outbound_agent_id] = `Outbound Agent (${phoneData.phone_number_pretty})`;
+            availableAgentIds.push(phoneData.outbound_agent_id);
           }
         });
+
+        // Update available agent IDs from API only
+        setAvailableAgentIds(availableAgentIds);
+
+        // Set default agent to the first available agent if none selected
+        if (!selectedAgentId && availableAgentIds.length > 0) {
+          setSelectedAgentId(availableAgentIds[0]);
+        }
+
+        console.log('📋 Agent names loaded:', nameMap);
+        console.log('📞 Phone numbers loaded:', phoneNumbersData);
+        console.log('🤖 Available agents from API:', availableAgentIds);
       }
 
       setAgentNames(nameMap);
-      console.log('📋 Agent names loaded:', nameMap);
     } catch (error) {
       console.error('Failed to fetch agent names:', error);
+      // Set empty object as fallback
+      setAgentNames({});
     }
   };
 
@@ -110,11 +176,8 @@ export function Analytics() {
     }
 
     setUser(currentUser);
-    // Set the first agent as default if available
-    if (currentUser.agentIds && currentUser.agentIds.length > 0) {
-      setSelectedAgentId(currentUser.agentIds[0]);
-    }
-
+    // Set the first agent as default if available will be set after API call
+    
     // Fetch agent names
     fetchAgentNames();
   }, [router]);
@@ -188,7 +251,7 @@ export function Analytics() {
           averageDuration: data.callDuration?.formattedDuration || "0m 0s",
           averageLatency: data.callLatency ? `${data.callLatency}ms` : "0ms",
           chartData: [], // Will be populated from rawCalls if needed
-          agents: user?.agentIds || [],
+          agents: Object.keys(agentNames), // Use actual agent IDs from API
           rawCalls: [], // Backend doesn't return individual calls in analytics
           apiStatus: "success",
           selectedAgentId: selectedAgentId,
@@ -255,26 +318,7 @@ export function Analytics() {
 
   const getAgentDisplay = () => {
     if (selectedAgentId && selectedAgentId !== "all") {
-      // Use actual agent name if available
-      const agentName = agentNames[selectedAgentId];
-      if (agentName) {
-        // Create a shorter display name based on agent type
-        if (agentName.toLowerCase().includes('inbound')) {
-          return "Inbound Agent";
-        } else if (agentName.toLowerCase().includes('outbound')) {
-          return "Outbound Agent";
-        } else {
-          // Use first 25 characters of agent name
-          return agentName.length > 25 ? agentName.substring(0, 25) + "..." : agentName;
-        }
-      }
-
-      // Fallback to agent index or ID
-      const agentIndex = user?.agentIds?.indexOf(selectedAgentId)
-      if (agentIndex !== undefined && agentIndex >= 0) {
-        return `Agent: ${user.workspaceName} Agent ${agentIndex + 1}`
-      }
-      return `Agent: ${selectedAgentId.substring(0, 12)}...`
+      return getAgentDisplayName(selectedAgentId);
     }
 
     return `All Agents (${user?.agentIds?.length || 0})`
@@ -360,20 +404,8 @@ export function Analytics() {
               className="text-sm border border-gray-300 rounded px-2 py-1"
             >
               <option value="">All Agents</option>
-              {user.agentIds.map((agentId: string, index: number) => {
-                const agentName = agentNames[agentId];
-                let displayName = `Agent ${index + 1}`;
-
-                if (agentName) {
-                  if (agentName.toLowerCase().includes('inbound')) {
-                    displayName = "Inbound Agent";
-                  } else if (agentName.toLowerCase().includes('outbound')) {
-                    displayName = "Outbound Agent";
-                  } else {
-                    displayName = agentName.length > 30 ? agentName.substring(0, 30) + "..." : agentName;
-                  }
-                }
-
+              {user.agentIds.map((agentId: string) => {
+                const displayName = getAgentDisplayName(agentId);
                 return (
                   <option key={agentId} value={agentId}>
                     {displayName}

@@ -27,6 +27,7 @@ interface CsvRow {
 export default function CreateCallsPage() {
   const [user, setUser] = useState<any>(null);
   const [agentNames, setAgentNames] = useState<Record<string, string>>({});
+  const [phoneNumbers, setPhoneNumbers] = useState<any[]>([]);
   const router = useRouter();
 
   const [formData, setFormData] = useState<CallFormData>({
@@ -37,22 +38,64 @@ export default function CreateCallsPage() {
     delayMinutes: 15
   });
 
-  // Fetch agent names
+  // Fetch agent names from phone numbers endpoint
   const fetchAgentNames = async () => {
     try {
-      const agents = await getAgents();
+      const phoneNumbersData = await getAgents();
       const nameMap: Record<string, string> = {};
+      const availableAgentIds: string[] = [];
 
-      if (Array.isArray(agents)) {
-        agents.forEach((agent: any) => {
-          if (agent.agent_id && agent.agent_name) {
-            nameMap[agent.agent_id] = agent.agent_name;
+      if (Array.isArray(phoneNumbersData)) {
+        setPhoneNumbers(phoneNumbersData);
+        
+        phoneNumbersData.forEach((phoneData: any) => {
+          // Add inbound agent if exists
+          if (phoneData.inbound_agent_id) {
+            nameMap[phoneData.inbound_agent_id] = `InBound Agent (${phoneData.phone_number_pretty})`;
+            availableAgentIds.push(phoneData.inbound_agent_id);
+          }
+          // Add outbound agent if exists
+          if (phoneData.outbound_agent_id) {
+            nameMap[phoneData.outbound_agent_id] = `Outbound Agent (${phoneData.phone_number_pretty})`;
+            availableAgentIds.push(phoneData.outbound_agent_id);
           }
         });
+
+        // Set default from number to the first available phone number
+        if (phoneNumbersData.length > 0) {
+          setFormData(prev => ({
+            ...prev,
+            fromNumber: phoneNumbersData[0].phone_number_pretty
+          }));
+        }
+
+        // Set default agent to the first outbound agent if available, otherwise first available agent
+        const outboundAgents = phoneNumbersData
+          .filter(phoneData => phoneData.outbound_agent_id)
+          .map(phoneData => phoneData.outbound_agent_id);
+        
+        const defaultAgentId = outboundAgents.length > 0 ? outboundAgents[0] : availableAgentIds[0];
+        
+        if (defaultAgentId) {
+          setFormData(prev => ({
+            ...prev,
+            agentId: defaultAgentId
+          }));
+        }
+
+        // Update user object to include all available agents
+        if (user) {
+          setUser((prev: any) => ({
+            ...prev,
+            agentIds: availableAgentIds
+          }));
+        }
       }
 
       setAgentNames(nameMap);
       console.log('📋 Agent names loaded:', nameMap);
+      console.log('📞 Phone numbers loaded:', phoneNumbersData);
+      console.log('🤖 Available agents:', availableAgentIds);
     } catch (error) {
       console.error('Failed to fetch agent names:', error);
     }
@@ -67,15 +110,7 @@ export default function CreateCallsPage() {
     }
 
     setUser(currentUser);
-    // Set the first agent as default if available
-    if (currentUser.agentIds && currentUser.agentIds.length > 0) {
-      setFormData(prev => ({
-        ...prev,
-        agentId: currentUser.agentIds[0]
-      }));
-    }
-
-    // Fetch agent names
+    // Fetch agent names first, which will set the default agent
     fetchAgentNames();
   }, [router]);
   
@@ -374,6 +409,31 @@ export default function CreateCallsPage() {
       fileInputRef.current.value = '';
     }
   };
+
+  // Get available agent IDs from phone numbers data
+  const getAvailableAgentIds = () => {
+    const agentIds: string[] = [];
+    phoneNumbers.forEach((phoneData: any) => {
+      if (phoneData.inbound_agent_id) {
+        agentIds.push(phoneData.inbound_agent_id);
+      }
+      if (phoneData.outbound_agent_id) {
+        agentIds.push(phoneData.outbound_agent_id);
+      }
+    });
+    return agentIds;
+  };
+
+  // Get only outbound agent IDs from phone numbers data
+  const getOutboundAgentIds = () => {
+    const agentIds: string[] = [];
+    phoneNumbers.forEach((phoneData: any) => {
+      if (phoneData.outbound_agent_id) {
+        agentIds.push(phoneData.outbound_agent_id);
+      }
+    });
+    return agentIds;
+  };
   
   return (
     <AuthenticatedLayout>
@@ -384,6 +444,7 @@ export default function CreateCallsPage() {
 
         <div className="p-8">
           <h1 className="text-2xl font-bold text-primary mb-6">Create Outbound Calls</h1>
+          
           
           <div className="bg-white rounded-lg shadow-md p-6">
             {error && (
@@ -491,7 +552,7 @@ export default function CreateCallsPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Agent <span className="text-red-500">*</span>
                   </label>
-                  {user?.agentIds && user.agentIds.length > 1 ? (
+                  {getAvailableAgentIds().length > 1 ? (
                     <select
                       name="agentId"
                       value={formData.agentId}
@@ -499,13 +560,13 @@ export default function CreateCallsPage() {
                       className="w-full p-2 border border-gray-300 rounded-md"
                       required
                     >
-                      {user.agentIds.map((agentId: string, index: number) => {
+                      {getAvailableAgentIds().map((agentId: string) => {
                         const agentName = agentNames[agentId];
-                        let displayName = `Agent ${index + 1}`;
+                        let displayName = agentId;
 
                         if (agentName) {
                           if (agentName.toLowerCase().includes('inbound')) {
-                            displayName = "Inbound Agent";
+                            displayName = "InBound Agent";
                           } else if (agentName.toLowerCase().includes('outbound')) {
                             displayName = "Outbound Agent";
                           } else {
@@ -532,7 +593,7 @@ export default function CreateCallsPage() {
                     />
                   )}
                   <p className="text-xs text-gray-500 mt-1">
-                    Workspace: {user?.workspaceName} - {user?.agentIds?.length || 0} agent(s) available
+                    Workspace: {user?.workspaceName} - {getAvailableAgentIds().length || 0} agent(s) available
                   </p>
                 </div>
                 
@@ -593,18 +654,44 @@ export default function CreateCallsPage() {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Agent ID <span className="text-red-500">*</span>
+                      Agent Outbound <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="text"
-                      name="agentId"
-                      value={formData.agentId}
-                      onChange={handleChange}
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                      required
-                    />
+                    {getOutboundAgentIds().length > 1 ? (
+                      <select
+                        name="agentId"
+                        value={formData.agentId}
+                        onChange={handleChange}
+                        className="w-full p-2 border border-gray-300 rounded-md"
+                        required
+                      >
+                        {getOutboundAgentIds().map((agentId: string) => {
+                          const agentName = agentNames[agentId];
+                          let displayName = "Outbound Agent";
+
+                          if (agentName && agentName.toLowerCase().includes('outbound')) {
+                            displayName = "Outbound Agent";
+                          }
+
+                          return (
+                            <option key={agentId} value={agentId}>
+                              {displayName}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        name="agentId"
+                        value={formData.agentId}
+                        onChange={handleChange}
+                        className="w-full p-2 border border-gray-300 rounded-md bg-gray-50"
+                        required
+                        readOnly
+                      />
+                    )}
                     <p className="text-xs text-gray-500 mt-1">
-                      Default: Orasurge Outbound V2 agent
+                      Outbound agents only for batch calls
                     </p>
                   </div>
                 </div>

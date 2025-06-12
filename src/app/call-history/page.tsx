@@ -125,16 +125,21 @@ const CallHistoryPage = () => {
   const [agentNames, setAgentNames] = useState<Record<string, string>>({});
   const router = useRouter();
 
-  // Fetch agent names
+  // Fetch agent names from phone numbers endpoint
   const fetchAgentNames = async () => {
     try {
-      const agents = await getAgents();
+      const phoneNumbers = await getAgents();
       const nameMap: Record<string, string> = {};
 
-      if (Array.isArray(agents)) {
-        agents.forEach((agent: any) => {
-          if (agent.agent_id && agent.agent_name) {
-            nameMap[agent.agent_id] = agent.agent_name;
+      if (Array.isArray(phoneNumbers)) {
+        phoneNumbers.forEach((phoneData: any) => {
+          // Add inbound agent if exists
+          if (phoneData.inbound_agent_id) {
+            nameMap[phoneData.inbound_agent_id] = `InBound Agent (${phoneData.phone_number_pretty})`;
+          }
+          // Add outbound agent if exists
+          if (phoneData.outbound_agent_id) {
+            nameMap[phoneData.outbound_agent_id] = `Outbound Agent (${phoneData.phone_number_pretty})`;
           }
         });
       }
@@ -820,4 +825,4 @@ const CallHistoryPage = () => {
   );
 };
 
-export default CallHistoryPage; 
+export default CallHistoryPage;

@@ -1,7 +1,7 @@
 "use client"
 
 import { Suspense } from "react"
-import { Analytics } from "./analytics"
+import {Analytics} from "./analytics"
 
 export default function AnalyticsClient() {
   return (
@@ -13,4 +13,4 @@ export default function AnalyticsClient() {
       <Analytics />
     </Suspense>
   )
-} 
+}

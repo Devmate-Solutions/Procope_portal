@@ -44,9 +44,9 @@ export async function getDashboardData(): Promise<any> {
   return makeAuthenticatedRequest('/dashboard');
 }
 
-// Agent management
+// Agent management - now returns phone numbers with agent information
 export async function getAgents(): Promise<any> {
-  return makeAuthenticatedRequest('/retell/agent');
+  return makeAuthenticatedRequest('/retell/phone-number');
 }
 
 export async function getAgent(agentId: string): Promise<any> {
@@ -132,7 +132,7 @@ export function isAdmin(): boolean {
 // Helper function to check if user has workspace admin role
 export function isWorkspaceAdmin(): boolean {
   const user = getCurrentUser();
-  return user?.role === 'workspace_admin' || user?.role === 'admin';
+  return user?.role === 'admin';
 }
 
 // Helper function to get current workspace info
