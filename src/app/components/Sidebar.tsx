@@ -55,17 +55,9 @@ export default function Sidebar() {
       ${collapsed ? 'w-20' : 'w-64'}`}
     >
       <div className="flex items-center justify-between p-4 border-b border-gray-100">
-        {!collapsed && (
-          <div className="flex items-center">
-            <Image 
-              src={logo} 
-              alt="My Dent AI Logo"
-              width={120} 
-              height={40} 
-              className="object-contain"
-            />
+        <div className="flex justify-center mb-4">
+           <h1 className=' text-[#1F4280] font-bold text-2xl'>MyDent.AI</h1>
           </div>
-        )}
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"

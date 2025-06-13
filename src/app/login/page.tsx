@@ -78,13 +78,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md shadow-lg border-none">
         <CardHeader className="text-center text-white py-8 rounded-t-lg">
           <div className="flex justify-center mb-4">
-            <Image
-              src={logo}
-              alt="My Dent AI Logo"
-              width={200}
-              height={60}
-              className="object-contain"
-            />
+           <h1 className=' text-[#1F4280] font-bold text-2xl'>MyDent.AI</h1>
           </div>
           <CardTitle className="text-2xl text-[#1F4280]">
             Dashboard Login
