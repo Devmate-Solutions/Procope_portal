@@ -143,49 +143,7 @@ function ResetPasswordPage() {
               {isLoading ? "Setting new password..." : "Set New Password"}
             </Button>
           </form>
-          <Button
-            variant="destructive"
-            size="default"
-            disabled={isLoading || !email}
-            className="w-full mt-4"
-            onClick={async () => {
-              setError("");
-              setSuccess("");
-              if (!email) {
-                setError("Please enter an email to delete.");
-                return;
-              }
-              if (!confirm(`Are you sure you want to delete user ${email}?`)) return;
-              setIsLoading(true);
-              try {
-                const response = await fetch(
-                  `https://func-retell425.azurewebsites.net/api/users/${encodeURIComponent(email)}`,
-                  {
-                    method: "DELETE",
-                    headers: { "Content-Type": "application/json" },
-                  }
-                );
-                let data: { success?: boolean; error?: string } = {};
-                try {
-                  data = await response.json();
-                } catch {
-                  data = {};
-                }
-                if (data.success) {
-                  setSuccess("User deleted successfully! Redirecting to login...");
-                  setTimeout(() => router.push("/login"), 2000);
-                } else {
-                  setError(data.error || "Failed to delete user.");
-                }
-              } catch (err: any) {
-                setError(err.message || "Failed to delete user.");
-              } finally {
-                setIsLoading(false);
-              }
-            }}
-          >
-            {isLoading ? "Processing..." : "Delete User"}
-          </Button>
+         
         </CardContent>
       </Card>
     </div>
