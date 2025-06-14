@@ -105,14 +105,14 @@ export default function LoginPage() {
 
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                Email Address
+              User name
               </Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
+                placeholder="provided username"
                 required
                 disabled={isLoading}
                 className="w-full"
