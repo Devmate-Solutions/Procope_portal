@@ -14,7 +14,7 @@ import {
   FaUserPlus
 } from 'react-icons/fa';
 import { getCurrentUser } from '@/lib/auth';
-import logo from '../../../public/logov2.png';
+
 
 interface SidebarItem {
   name: string;
@@ -37,6 +37,7 @@ export default function Sidebar() {
     { name: 'Create Calls', path: '/create-calls', icon: <FaPhoneAlt className="w-5 h-5" /> },
     { name: 'Call History', path: '/call-history', icon: <FaHistory className="w-5 h-5" /> },
     { name: 'Call Analytics', path: '/analytics', icon: <FaChartLine className="w-5 h-5" /> },
+    { name: 'Pdf Extractor', path: '/pdf-extractor', icon: <FaChartLine className="w-5 h-5" /> },
   ];
 
   // Admin/Owner only menu items
