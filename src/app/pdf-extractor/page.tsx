@@ -299,68 +299,7 @@ export default function PDFExtractorPage() {
               )}
             </Button>
 
-            {/* Results */}
-            {extractedData && (
-              <div className="space-y-6 border-t pt-6">
-                <h3 className="text-lg font-semibold">Extraction Results</h3>
-
-                {/* Stats */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <Card>
-                    <CardContent className="p-4 text-center">
-                      <div className="text-2xl font-bold text-blue-600">{extractedData.ocr.pageCount}</div>
-                      <div className="text-sm text-gray-500">Pages</div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-4 text-center">
-                      <div className="text-2xl font-bold text-blue-600">
-                        {extractedData.ocr.textLength.toLocaleString()}
-                      </div>
-                      <div className="text-sm text-gray-500">Characters</div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-4 text-center">
-                      <div className="text-2xl font-bold text-blue-600">
-                        {getWordCount(extractedData.ocr.fullText).toLocaleString()}
-                      </div>
-                      <div className="text-sm text-gray-500">Words</div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-4 text-center">
-                      <div className="text-2xl font-bold text-blue-600">
-                        {formatFileSize(extractedData.upload.size)}
-                      </div>
-                      <div className="text-sm text-gray-500">File Size</div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Extracted Text */}
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h4 className="font-medium">Extracted Text:</h4>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={copyText} className={undefined}>
-                        <Copy className="w-4 h-4 mr-1" />
-                        Copy
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={downloadText} className={undefined}>
-                        <Download className="w-4 h-4 mr-1" />
-                        Download
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="bg-gray-50 border rounded-lg p-4 max-h-96 overflow-y-auto">
-                    <pre className="whitespace-pre-wrap text-sm font-mono leading-relaxed">
-                      {extractedData.ocr.fullText}
-                    </pre>
-                  </div>
-                </div>
-              </div>
-            )}
+         
           </CardContent>
         </Card>
       </div>

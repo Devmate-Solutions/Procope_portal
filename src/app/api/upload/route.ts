@@ -87,17 +87,7 @@ export async function POST(request: NextRequest) {
       if (data.success) {
         return NextResponse.json({
           success: true,
-          data: {
-            ocr: {
-              pageCount: data.data.ocr.pageCount,
-              textLength: data.data.ocr.textLength,
-              fullText: data.data.ocr.fullText,
-            },
-            upload: {
-              size: data.data.upload.size,
-              filename: data.data.upload.filename,
-            },
-          },
+          message: "PDF extracted successfully",
         })
       } else {
         return NextResponse.json({ success: false, error: data.error || "PDF extraction failed" }, { status: 500 })
