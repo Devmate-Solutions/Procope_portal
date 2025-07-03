@@ -65,6 +65,7 @@ function TranscriptsTable({ transcripts, workspaceId }: { transcripts: Transcrip
   const totalPages = Math.ceil(transcripts.length / pageSize);
   const paginatedTranscripts = transcripts.slice((page - 1) * pageSize, page * pageSize);
 
+  // PDF download logic (instead of JSON)
   const handleDownload = async (transcriptionId: string, filename: string) => {
     try {
       setDownloadingId(transcriptionId);
@@ -75,11 +76,11 @@ function TranscriptsTable({ transcripts, workspaceId }: { transcripts: Transcrip
         },
         body: JSON.stringify({ transcription_id: transcriptionId }),
       });
-      if (!res.ok) throw new Error('Failed to get download URL');
-      const data: TranscriptDownloadResponse = await res.json();
+      if (!res.ok) throw new Error('Failed to get PDF download URL');
+      const data = await res.json();
       window.open(data.download_url, '_blank');
     } catch (e) {
-      alert('Failed to download transcript. Please try again.');
+      alert('Failed to download PDF. Please try again.');
     } finally {
       setDownloadingId(null);
     }
@@ -103,47 +104,41 @@ function TranscriptsTable({ transcripts, workspaceId }: { transcripts: Transcrip
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transcript ID</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Filename</th>
+            
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient Name</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient Number</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+            
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Email</th>
+            
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PDF 
+Download</th>
+            
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {paginatedTranscripts.map((t) => (
               <tr key={t.transcription_id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
-                  <span className="bg-gray-100 px-2 py-1 rounded text-xs">{t.transcription_id.substring(0, 8)}...</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  <div className="flex items-center">
-                    <span className="mr-2 text-lg">📄</span>
-                    <div>
-                      <div className="font-medium">{t.original_filename}</div>
-                    </div>
-                  </div>
-                </td>
+               
+                
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{(t as any).pat_name || (t as any).patName || <span className="text-gray-400 italic">N/A</span>}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{(t as any).pat_num || (t as any).patNum || <span className="text-gray-400 italic">N/A</span>}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(t.status)}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   <div>{new Date(t.created_at).toLocaleDateString()}</div>
                   <div className="text-xs text-gray-400">{new Date(t.created_at).toLocaleTimeString()}</div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{t.user_email}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(t.status)}</td>
+              
+               
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   {t.status === 'completed' ? (
                     <button
-                      className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-50"
+                      className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors disabled:opacity-50"
                       onClick={() => handleDownload(t.transcription_id, t.original_filename)}
                       disabled={downloadingId === t.transcription_id}
                     >
-                      <span className="mr-1">⬇️</span>
-                      {downloadingId === t.transcription_id ? 'Downloading...' : 'Download JSON'}
+                      <span className="mr-1">📄</span>
+                      {downloadingId === t.transcription_id ? 'Downloading...' : 'Download PDF'}
                     </button>
                   ) : (
                     <span className="text-gray-400 text-xs">Processing...</span>
