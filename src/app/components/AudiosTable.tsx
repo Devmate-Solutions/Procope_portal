@@ -8,6 +8,8 @@ interface Transcript {
   status: string;
   created_at: string;
   user_email: string;
+  pat_name?: string;
+  pat_num?: string;
 }
 
 interface Audio {
@@ -17,6 +19,8 @@ interface Audio {
   file_key: string;
   status: string;
   created_at: string;
+  pat_name?: string;
+  pat_num?: string;
 }
 
 interface AudioDownloadResponse {
@@ -53,7 +57,13 @@ function getStatusBadge(status: string) {
 }
 
 function TranscriptsTable({ transcripts, workspaceId }: { transcripts: Transcript[]; workspaceId: string }) {
+  // Debug: Log transcripts data
+  console.log('Transcripts Data:', transcripts);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const totalPages = Math.ceil(transcripts.length / pageSize);
+  const paginatedTranscripts = transcripts.slice((page - 1) * pageSize, page * pageSize);
 
   const handleDownload = async (transcriptionId: string, filename: string) => {
     try {
@@ -67,7 +77,6 @@ function TranscriptsTable({ transcripts, workspaceId }: { transcripts: Transcrip
       });
       if (!res.ok) throw new Error('Failed to get download URL');
       const data: TranscriptDownloadResponse = await res.json();
-      // Open the download URL in a new tab
       window.open(data.download_url, '_blank');
     } catch (e) {
       alert('Failed to download transcript. Please try again.');
@@ -94,33 +103,21 @@ function TranscriptsTable({ transcripts, workspaceId }: { transcripts: Transcrip
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Transcript ID
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Filename
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Created At
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                User Email
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transcript ID</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Filename</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient Name</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient Number</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Email</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {transcripts.map((t) => (
+            {paginatedTranscripts.map((t) => (
               <tr key={t.transcription_id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
-                  <span className="bg-gray-100 px-2 py-1 rounded text-xs">
-                    {t.transcription_id.substring(0, 8)}...
-                  </span>
+                  <span className="bg-gray-100 px-2 py-1 rounded text-xs">{t.transcription_id.substring(0, 8)}...</span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   <div className="flex items-center">
@@ -130,18 +127,14 @@ function TranscriptsTable({ transcripts, workspaceId }: { transcripts: Transcrip
                     </div>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {getStatusBadge(t.status)}
-                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{(t as any).pat_name || (t as any).patName || <span className="text-gray-400 italic">N/A</span>}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{(t as any).pat_num || (t as any).patNum || <span className="text-gray-400 italic">N/A</span>}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(t.status)}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   <div>{new Date(t.created_at).toLocaleDateString()}</div>
-                  <div className="text-xs text-gray-400">
-                    {new Date(t.created_at).toLocaleTimeString()}
-                  </div>
+                  <div className="text-xs text-gray-400">{new Date(t.created_at).toLocaleTimeString()}</div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {t.user_email}
-                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{t.user_email}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   {t.status === 'completed' ? (
                     <button
@@ -161,6 +154,26 @@ function TranscriptsTable({ transcripts, workspaceId }: { transcripts: Transcrip
           </tbody>
         </table>
       </div>
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 py-4">
+          <button
+            className="px-3 py-1 rounded border bg-gray-100 text-gray-700 disabled:opacity-50"
+            onClick={() => setPage(page - 1)}
+            disabled={page === 1}
+          >
+            Previous
+          </button>
+          <span className="text-sm text-gray-600">Page {page} of {totalPages}</span>
+          <button
+            className="px-3 py-1 rounded border bg-gray-100 text-gray-700 disabled:opacity-50"
+            onClick={() => setPage(page + 1)}
+            disabled={page === totalPages}
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -168,6 +181,10 @@ function TranscriptsTable({ transcripts, workspaceId }: { transcripts: Transcrip
 function AudiosTable({ audios }: { audios: Audio[] }) {
   const [downloading, setDownloading] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const totalPages = Math.ceil(audios.length / pageSize);
+  const paginatedAudios = audios.slice((page - 1) * pageSize, page * pageSize);
 
   const handleDownload = async (audioId: string, filename: string) => {
     try {
@@ -184,6 +201,7 @@ function AudiosTable({ audios }: { audios: Audio[] }) {
       if (!response.ok) {
         throw new Error('Failed to get download URL');
       }
+      // console.log('Download response:', response);
 
       const data: AudioDownloadResponse = await response.json();
       // Open the download URL in a new tab
@@ -231,6 +249,7 @@ function AudiosTable({ audios }: { audios: Audio[] }) {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Filename
               </th>
+              {/* Removed Patient Name and Patient Number columns from Audio Files table */}
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
               </th>
@@ -244,7 +263,7 @@ function AudiosTable({ audios }: { audios: Audio[] }) {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {audios.map((a) => (
+            {paginatedAudios.map((a) => (
               <tr key={a.audio_id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
                   <span className="bg-gray-100 px-2 py-1 rounded text-xs">
@@ -253,13 +272,13 @@ function AudiosTable({ audios }: { audios: Audio[] }) {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   <div className="flex items-center">
-                    
                     <div>
                       <div className="font-medium">{a.original_filename}</div>
                       <div className="text-xs text-gray-500">{a.file_key}</div>
                     </div>
                   </div>
                 </td>
+                {/* Removed Patient Name and Patient Number cells from Audio Files table */}
                 <td className="px-6 py-4 whitespace-nowrap">
                   {getStatusBadge(a.status)}
                 </td>
@@ -300,6 +319,28 @@ function AudiosTable({ audios }: { audios: Audio[] }) {
           </tbody>
         </table>
       </div>
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 py-4">
+          <button
+            className="px-3 py-1 rounded border bg-gray-100 text-gray-700 disabled:opacity-50"
+            onClick={() => setPage(page - 1)}
+            disabled={page === 1}
+          >
+            Previous
+          </button>
+          <span className="text-sm text-gray-600">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            className="px-3 py-1 rounded border bg-gray-100 text-gray-700 disabled:opacity-50"
+            onClick={() => setPage(page + 1)}
+            disabled={page === totalPages}
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }

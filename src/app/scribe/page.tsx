@@ -77,6 +77,7 @@ export default function ScribePage() {
   // Handle recording
   const startRecording = async () => {
     try {
+      console.log("[DEBUG] Requesting microphone access...");
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       
@@ -86,6 +87,7 @@ export default function ScribePage() {
       
       mediaRecorder.ondataavailable = (event) => {
         chunksRef.current.push(event.data);
+        console.log("[DEBUG] Data available from MediaRecorder:", event.data);
       };
       
       mediaRecorder.onstop = () => {
@@ -96,6 +98,7 @@ export default function ScribePage() {
         setAudioUrl(audioUrl);
         setAudioSize(audioBlob.size);
         
+        console.log("[DEBUG] Recording stopped. Blob size:", audioBlob.size, "URL:", audioUrl);
         // Clean up stream
         if (streamRef.current) {
           streamRef.current.getTracks().forEach(track => track.stop());
@@ -110,6 +113,7 @@ export default function ScribePage() {
         setRecordingTime(prev => prev + 1);
       }, 1000);
       
+      console.log("[DEBUG] Started recording.");
     } catch (error) {
       console.error("Error accessing microphone:", error);
       alert("Failed to access microphone. Please ensure you have granted permission.");
@@ -129,9 +133,17 @@ export default function ScribePage() {
   };
   
   // Transcription functions
+  // Patient info for upload
+  const [patName, setPatName] = useState("");
+  const [patNum, setPatNum] = useState("");
+
   const startTranscription = async () => {
     if (!audioBlob) {
       alert("Please record audio first");
+      return;
+    }
+    if (!patName.trim() || !patNum.trim()) {
+      alert("Please enter both patient name and number.");
       return;
     }
 
@@ -139,29 +151,34 @@ export default function ScribePage() {
       setIsTranscribing(true);
       setTranscriptionProgress(0);
       setTranscriptionStatus("Getting upload URL...");
-      
-      // Step 1: Get upload URL
+
+      // Step 1: Get upload URL with patient info
       const filename = `recording-${Date.now()}.wav`;
       const token = getAuthToken();
-      
+
+      console.log("[DEBUG] Starting transcription with:", { filename, patNum, patName, audioBlob });
+
       const uploadUrlResponse = await fetch(`${API_URL}/get-upload-url`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ filename })
+        body: JSON.stringify({ filename, patNum, patName })
       });
-      
+
+      console.log("[DEBUG] Upload URL response status:", uploadUrlResponse.status);
+
       if (!uploadUrlResponse.ok) {
         throw new Error("Failed to get upload URL");
       }
-      
+
       const uploadData = await uploadUrlResponse.json();
+      console.log("[DEBUG] Upload URL response data:", uploadData);
       setTranscriptionId(uploadData.transcription_id);
       setTranscriptionProgress(25);
       setTranscriptionStatus("Uploading audio file...");
-      
+
       // Step 2: Upload audio to S3
       const uploadResponse = await fetch(uploadData.upload_url, {
         method: "PUT",
@@ -170,17 +187,19 @@ export default function ScribePage() {
           "Content-Type": "audio/wav"
         }
       });
-      
+
+      console.log("[DEBUG] Audio upload response status:", uploadResponse.status);
+
       if (!uploadResponse.ok) {
         throw new Error("Failed to upload audio file");
       }
-      
+
       setTranscriptionProgress(50);
       setTranscriptionStatus("Audio uploaded! Starting transcription...");
-      
+
       // Step 3: Poll for transcription status
       pollTranscriptionStatus(uploadData.transcription_id);
-      
+
     } catch (error) {
       console.error("Transcription error:", error);
       alert(`Transcription failed: ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -253,28 +272,36 @@ export default function ScribePage() {
     }
   };
   
+  // Helper to decode JWT and get workspaceId
+  const getWorkspaceId = () => {
+    const token = getAuthToken();
+    if (!token) return "";
+    try {
+      // JWT decode (naive, no validation)
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      return payload.workspaceId || "";
+    } catch {
+      return "";
+    }
+  };
+
   // Load transcript history
   const loadTranscriptHistory = async () => {
     try {
       setIsLoadingHistory(true);
-      
       const token = getAuthToken();
-      // In a real app, you would get the workspace ID from user context
-      const workspaceId = "your-workspace-id"; // Replace with actual workspace ID
-      
+      const workspaceId = getWorkspaceId();
+      if (!workspaceId) throw new Error("Could not determine workspaceId from token");
       const response = await fetch(`${API_URL}/workspace/${workspaceId}/transcripts`, {
         headers: {
           "Authorization": `Bearer ${token}`
         }
       });
-      
       if (!response.ok) {
         throw new Error("Failed to load transcripts");
       }
-      
       const data = await response.json();
       setTranscriptHistory(data.transcripts || []);
-      
     } catch (error) {
       console.error("Load history error:", error);
       alert(`Failed to load transcript history: ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -480,13 +507,11 @@ export default function ScribePage() {
     <AuthenticatedLayout>
       <div className="container mx-auto py-8 max-w-5xl">
         <h1 className="text-3xl font-bold mb-6">Voice Transcription</h1>
-        
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="mb-4">
             <TabsTrigger value="record">Record & Transcribe</TabsTrigger>
             {/* <TabsTrigger value="history">Transcript History</TabsTrigger> */}
           </TabsList>
-          
           <TabsContent value="record" className="space-y-4">
             <Card>
               <CardHeader>
@@ -494,12 +519,29 @@ export default function ScribePage() {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-col items-center justify-center p-8 bg-gray-50 rounded-lg">
-                  {/* Recording Timer & Info */}
+                  {/* Patient Info Fields */}
+                  <div className="flex flex-col md:flex-row gap-4 w-full mb-6">
+                    <input
+                      type="text"
+                      placeholder="Patient Name"
+                      value={patName}
+                      onChange={e => setPatName(e.target.value)}
+                      className="border rounded px-3 py-2 flex-1"
+                      disabled={isTranscribing || isRecording}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Patient Number"
+                      value={patNum}
+                      onChange={e => setPatNum(e.target.value)}
+                      className="border rounded px-3 py-2 flex-1"
+                      disabled={isTranscribing || isRecording}
+                    />
+                  </div>
+                  {/* ...existing code for timer, controls, status, playback, button... */}
                   <div className="text-4xl font-bold mb-8 text-blue-600">
                     {formatTime(recordingTime)}
                   </div>
-                  
-                  {/* Recording Controls */}
                   <div className="flex justify-center items-center gap-8 mb-6">
                     {!isRecording ? (
                       <Button 
@@ -529,8 +571,6 @@ export default function ScribePage() {
                       </Button>
                     )}
                   </div>
-                  
-                  {/* Recording Status */}
                   <div className="text-center mb-4">
                     <p className="text-lg font-medium mb-1">
                       {isRecording ? 'Recording in progress...' : 'Ready to record'}
@@ -547,15 +587,11 @@ export default function ScribePage() {
                       </div>
                     )}
                   </div>
-                  
-                  {/* Audio Playback */}
                   {audioUrl && !isRecording && (
                     <div className="w-full max-w-md mt-4">
                       <audio src={audioUrl} controls className="w-full" />
                     </div>
                   )}
-                  
-                  {/* Transcription Button */}
                   {audioBlob && !isRecording && (
                     <Button
                       variant="default"
