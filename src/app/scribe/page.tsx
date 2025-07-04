@@ -144,7 +144,6 @@ export default function ScribePage() {
   // Patient info for upload
   const [patName, setPatName] = useState("");
   const [patNum, setPatNum] = useState("");
-  const [customFilename, setCustomFilename] = useState("");
 
   const startTranscription = async () => {
     if (!audioBlob) {
@@ -161,10 +160,14 @@ export default function ScribePage() {
       setTranscriptionProgress(0);
       setTranscriptionStatus("Getting upload URL...");
 
-      // Step 1: Get upload URL with patient info
-      const filename = customFilename.trim() ? 
-        `${customFilename.trim()}.wav` : 
-        `recording-${Date.now()}.wav`;
+      // Generate filename based on patient name, number and current date/time
+      const now = new Date();
+      const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+      const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-'); // HH-MM-SS
+      const sanitizedPatName = patName.trim().replace(/[^a-zA-Z0-9]/g, '_');
+      const sanitizedPatNum = patNum.trim().replace(/[^a-zA-Z0-9]/g, '_');
+      const filename = `${sanitizedPatName}_${sanitizedPatNum}_${dateStr}_${timeStr}.wav`;
+      
       const token = getAuthToken();
 
       console.log("[DEBUG] Starting transcription with:", { filename, patNum, patName, audioBlob });
@@ -277,7 +280,6 @@ export default function ScribePage() {
         // Reset form fields after successful transcription
         setPatName("");
         setPatNum("");
-        setCustomFilename("");
       }, 1000);
       
     } catch (error) {
@@ -498,7 +500,6 @@ export default function ScribePage() {
   const resetForm = () => {
     setPatName("");
     setPatNum("");
-    setCustomFilename("");
     setAudioBlob(null);
     setAudioUrl(null);
     setAudioSize(0);
@@ -568,20 +569,7 @@ export default function ScribePage() {
                     />
                   </div>
                   
-                  {/* Filename Field */}
-                  <div className="w-full mb-6">
-                    <input
-                      type="text"
-                      placeholder="Custom Filename (optional)"
-                      value={customFilename}
-                      onChange={e => setCustomFilename(e.target.value)}
-                      className="border rounded px-3 py-2 w-full"
-                      disabled={isTranscribing || isRecording}
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Leave empty for auto-generated filename
-                    </p>
-                  </div>
+                  {/* Filename Field - Removed */}
                   
                   {/* ...existing code for timer, controls, status, playback, button... */}
                   <div className="text-4xl font-bold mb-8 text-blue-600">
