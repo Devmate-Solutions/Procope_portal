@@ -508,7 +508,7 @@ export default function TranscriptHistory({
           >
             <div className="flex items-center">
               <span className="mr-2">📄</span>
-              Transcripts
+              Scribe History
               <span className="ml-2 bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs">
                 {transcripts.length}
               </span>
@@ -523,7 +523,7 @@ export default function TranscriptHistory({
         {activeTab === 'transcripts' && (
           <div>
             <div className="mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Transcripts</h3>
+              <h3 className="text-lg font-medium text-gray-900">Scribe History</h3>
               <p className="text-sm text-gray-600">View and manage your transcription history</p>
             </div>
             <TranscriptsTable transcripts={transcripts} audios={audios} workspaceId={workspaceId} />
