@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { decodeToken, UserProfile } from '@/lib/auth';
 import AuthenticatedLayout from '../components/AuthenticatedLayout';
 import React from 'react';
-import ScribeHistoryTabs from '../components/AudiosTable';
+import TranscriptHistory from '../components/AudiosTable';
 
 interface Transcript {
   transcription_id: string;
@@ -159,7 +159,6 @@ export default async function ScribeHistoryPage() {
           {!error && !isLoading && (
             <div className="space-y-8">
               {/* Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white overflow-hidden shadow-sm rounded-lg">
                   <div className="p-5">
                     <div className="flex items-center">
@@ -180,29 +179,8 @@ export default async function ScribeHistoryPage() {
                   </div>
                 </div>
 
-                <div className="bg-white overflow-hidden shadow-sm rounded-lg">
-                  <div className="p-5">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0">
-                        <span className="text-2xl">🎵</span>
-                      </div>
-                      <div className="ml-5 w-0 flex-1">
-                        <dl>
-                          <dt className="text-sm font-medium text-gray-500 truncate">
-                            Total Audio Files
-                          </dt>
-                          <dd className="text-lg font-medium text-gray-900">
-                            {audios.length}
-                          </dd>
-                        </dl>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Tabbed Interface */}
-              <ScribeHistoryTabs transcripts={transcripts} audios={audios} workspaceId={workspaceId} />
+              {/* Transcript History */}
+              <TranscriptHistory transcripts={transcripts} audios={audios} workspaceId={workspaceId} />
             </div>
           )}
         </div>

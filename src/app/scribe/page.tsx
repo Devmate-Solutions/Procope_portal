@@ -141,10 +141,10 @@ export default function ScribePage() {
     }
   };
   
-  // Transcription functions
   // Patient info for upload
   const [patName, setPatName] = useState("");
   const [patNum, setPatNum] = useState("");
+  const [customFilename, setCustomFilename] = useState("");
 
   const startTranscription = async () => {
     if (!audioBlob) {
@@ -162,7 +162,9 @@ export default function ScribePage() {
       setTranscriptionStatus("Getting upload URL...");
 
       // Step 1: Get upload URL with patient info
-      const filename = `recording-${Date.now()}.wav`;
+      const filename = customFilename.trim() ? 
+        `${customFilename.trim()}.wav` : 
+        `recording-${Date.now()}.wav`;
       const token = getAuthToken();
 
       console.log("[DEBUG] Starting transcription with:", { filename, patNum, patName, audioBlob });
@@ -171,7 +173,7 @@ export default function ScribePage() {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ filename, patNum, patName })
       });
@@ -272,6 +274,10 @@ export default function ScribePage() {
       
       setTimeout(() => {
         setIsTranscribing(false);
+        // Reset form fields after successful transcription
+        setPatName("");
+        setPatNum("");
+        setCustomFilename("");
       }, 1000);
       
     } catch (error) {
@@ -488,6 +494,20 @@ export default function ScribePage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  // Reset form and recording
+  const resetForm = () => {
+    setPatName("");
+    setPatNum("");
+    setCustomFilename("");
+    setAudioBlob(null);
+    setAudioUrl(null);
+    setAudioSize(0);
+    setRecordingTime(0);
+    if (audioUrl) {
+      URL.revokeObjectURL(audioUrl);
+    }
+  };
+
   // Clean up on unmount
   useEffect(() => {
     return () => {
@@ -547,6 +567,22 @@ export default function ScribePage() {
                       disabled={isTranscribing || isRecording}
                     />
                   </div>
+                  
+                  {/* Filename Field */}
+                  <div className="w-full mb-6">
+                    <input
+                      type="text"
+                      placeholder="Custom Filename (optional)"
+                      value={customFilename}
+                      onChange={e => setCustomFilename(e.target.value)}
+                      className="border rounded px-3 py-2 w-full"
+                      disabled={isTranscribing || isRecording}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Leave empty for auto-generated filename
+                    </p>
+                  </div>
+                  
                   {/* ...existing code for timer, controls, status, playback, button... */}
                   <div className="text-4xl font-bold mb-8 text-blue-600">
                     {formatTime(recordingTime)}
@@ -602,12 +638,13 @@ export default function ScribePage() {
                     </div>
                   )}
                   {audioBlob && !isRecording && (
+                    <div className="flex gap-3 mt-6">
                     <Button
                       variant="default"
                       size="lg"
                       onClick={startTranscription}
                       disabled={isTranscribing}
-                      className="mt-6"
+                        className=""
                     >
                       {isTranscribing ? (
                         <>
@@ -619,6 +656,16 @@ export default function ScribePage() {
                         </>
                       ) : "Start Transcription"}
                     </Button>
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        onClick={resetForm}
+                        disabled={isTranscribing}
+                        className=""
+                      >
+                        Clear
+                      </Button>
+                    </div>
                   )}
                 </div>
               </CardContent>
