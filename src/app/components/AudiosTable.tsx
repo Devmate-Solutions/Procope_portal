@@ -580,6 +580,7 @@ interface ClinicalData {
   treatment_plan?: {
     medications?: string[];
     procedures?: string[];
+    follow_up?:string[];
   };
   lifestyle_recommendations?: string[];
   follow_up?: string[];
@@ -827,6 +828,12 @@ function TranscriptsTable({ transcripts, audios, workspaceId }: {
       formattedContent += 'Sub-Category: Differential Diagnosis\n';
       formattedContent += '------------------------------\n';
       formattedContent += formatBulletPoints(clinicalData.differential_diagnosis);
+      formattedContent += '\n';
+    }
+    if (clinicalData.treatment_plan.follow_up && clinicalData.treatment_plan.follow_up.length > 0) {
+      formattedContent += 'Sub-Category: Follow up\n';
+      formattedContent += '------------------------------\n';
+      formattedContent += formatBulletPoints(clinicalData.treatment_plan.follow_up);
       formattedContent += '\n';
     }
     
