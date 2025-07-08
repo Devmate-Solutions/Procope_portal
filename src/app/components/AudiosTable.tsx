@@ -836,7 +836,7 @@ function TranscriptsTable({ transcripts, audios, workspaceId }: {
     formattedContent += '==================================================\n';
     formattedContent += `Status: ${clinicalData.status || 'Unknown'}\n`;
     formattedContent += `Processing Time: ${clinicalData.processing_time ? new Date(clinicalData.processing_time).toLocaleString() : 'Unknown'}\n`;
-    formattedContent += `Model Used: ${clinicalData.model_used || 'Unknown'}\n`;
+    // formattedContent += `Model Used: ${clinicalData.model_used || 'Unknown'}\n`;
     formattedContent += `Generated: ${new Date().toLocaleString()}\n`;
     
     // Build PDF content with styling
