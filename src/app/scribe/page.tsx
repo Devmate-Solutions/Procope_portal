@@ -4,7 +4,6 @@ import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cookies } from "next/headers";
 import AuthenticatedLayout from "../components/AuthenticatedLayout";
 import { encodeWAV } from "@/app/utils/wavEncoder";
 
@@ -156,6 +155,7 @@ export default function ScribePage() {
     }
 
     try {
+      console.log("[DEBUG] Starting transcription process...");
       setIsTranscribing(true);
       setTranscriptionProgress(0);
       setTranscriptionStatus("Getting upload URL...");
@@ -170,7 +170,13 @@ export default function ScribePage() {
       
       const token = getAuthToken();
 
-      console.log("[DEBUG] Starting transcription with:", { filename, patNum, patName, audioBlob });
+      console.log("[DEBUG] Transcription parameters:", { 
+        filename,
+        patNum,
+        patName,
+        audioSize: audioBlob.size,
+        audioType: audioBlob.type
+      });
 
       const uploadUrlResponse = await fetch(`${API_URL}/get-upload-url`, {
         method: "POST",
@@ -223,6 +229,7 @@ export default function ScribePage() {
   
   const pollTranscriptionStatus = async (id: string) => {
     try {
+      console.log("[DEBUG] Polling transcription status for ID:", id);
       const token = getAuthToken();
       const response = await fetch(`${API_URL}/status/${id}`, {
         headers: {
@@ -235,13 +242,17 @@ export default function ScribePage() {
       }
       
       const data = await response.json();
+      console.log("[DEBUG] Transcription status data:", data);
+      
       const progress = data.progress || 0;
       setTranscriptionProgress(50 + (progress / 2)); // Map 0-100 to 50-100
       setTranscriptionStatus(`Status: ${data.status}`);
       
       if (data.status === "completed") {
+        console.log("[DEBUG] Transcription completed, fetching transcript...");
         await getTranscript(id);
       } else if (data.status === "failed") {
+        console.error("[DEBUG] Transcription failed:", data.error_message);
         throw new Error(data.error_message || "Transcription failed");
       } else {
         // Continue polling
@@ -256,6 +267,7 @@ export default function ScribePage() {
   
   const getTranscript = async (id: string) => {
     try {
+      console.log("[DEBUG] Fetching final transcript for ID:", id);
       setTranscriptionProgress(95);
       setTranscriptionStatus("Getting transcript results...");
       
@@ -271,7 +283,45 @@ export default function ScribePage() {
       }
       
       const data = await response.json();
-      setTranscription(data);
+      console.log("[DEBUG] Raw transcript response:", data);
+
+      // Validate the data structure
+      if (!data || typeof data !== 'object') {
+        throw new Error("Invalid transcript data received");
+      }
+
+      // Initialize transcript structure if missing
+      const transcript = {
+        full_transcript: data.transcript?.full_transcript || data.full_transcript || "",
+        segments: data.transcript?.segments || data.segments || [],
+        segments_count: 0,
+        total_duration: 0
+      };
+
+      // Calculate segments_count and total_duration
+      transcript.segments_count = transcript.segments.length;
+      transcript.total_duration = transcript.segments.reduce((total: number, segment: TranscriptionSegment) => {
+        const endTime = parseFloat(segment.end_time || "0");
+        return Math.max(total, endTime);
+      }, 0);
+
+      // Create normalized data structure
+      const normalizedData = {
+        transcript,
+        metadata: data.metadata || {
+          original_filename: data.original_filename || "recording.wav"
+        }
+      };
+
+      console.log("[DEBUG] Normalized transcript data:", {
+        transcriptionId: id,
+        metadata: normalizedData.metadata,
+        segmentsCount: transcript.segments_count,
+        wordCount: transcript.full_transcript.split(' ').length,
+        fullTranscript: transcript.full_transcript.substring(0, 100) + "..." // First 100 chars
+      });
+      
+      setTranscription(normalizedData);
       setTranscriptionProgress(100);
       setTranscriptionStatus("Transcription completed!");
       
@@ -283,7 +333,8 @@ export default function ScribePage() {
       }, 1000);
       
     } catch (error) {
-      console.error("Get transcript error:", error);
+      console.error("[DEBUG] Get transcript error:", error);
+      console.error("[DEBUG] Error stack:", error instanceof Error ? error.stack : "No stack trace");
       alert(`Failed to get transcript: ${error instanceof Error ? error.message : "Unknown error"}`);
       setIsTranscribing(false);
     }
@@ -352,117 +403,7 @@ export default function ScribePage() {
   };
   
   // Download transcript as PDF
-  const downloadAsPDF = () => {
-    if (!transcription) return;
-    
-    // This is a simple implementation for client-side PDF generation
-    // In a production app, you might want to use a more robust solution or server-side generation
-    
-    // Create a hidden iframe to print from
-    const printIframe = document.createElement('iframe');
-    printIframe.style.position = 'absolute';
-    printIframe.style.top = '-9999px';
-    printIframe.style.left = '-9999px';
-    document.body.appendChild(printIframe);
-    
-    const transcript = transcription.transcript;
-    const documentTitle = `Transcript - ${transcription.metadata.original_filename || 'Recording'}`;
-    
-    // Build PDF content with styling
-    const content = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>${documentTitle}</title>
-        <style>
-          body { 
-            font-family: Arial, sans-serif; 
-            line-height: 1.6; 
-            margin: 40px; 
-            color: #333;
-          }
-          h1 { color: #2563eb; margin-bottom: 16px; }
-          h2 { color: #4b5563; margin-top: 24px; margin-bottom: 12px; }
-          .info { 
-            background: #f3f4f6; 
-            padding: 12px; 
-            border-radius: 4px;
-            margin-bottom: 24px;
-          }
-          .full-transcript {
-            margin-bottom: 32px;
-            background: white;
-            padding: 16px;
-            border: 1px solid #e5e7eb;
-            border-radius: 4px;
-          }
-          .segment {
-            padding: 12px;
-            margin-bottom: 12px;
-            border-left: 4px solid #3b82f6;
-            background: #f9fafb;
-          }
-          .time { color: #6b7280; font-size: 0.9em; margin-bottom: 4px; }
-          .speaker { font-weight: bold; color: #2563eb; margin-bottom: 4px; }
-          footer {
-            margin-top: 40px;
-            font-size: 0.8em;
-            color: #6b7280;
-            text-align: center;
-            border-top: 1px solid #e5e7eb;
-            padding-top: 12px;
-          }
-        </style>
-      </head>
-      <body>
-        <h1>${documentTitle}</h1>
-        
-        <div class="info">
-          <p><strong>Segments:</strong> ${transcript.segments_count}</p>
-          <p><strong>Words:</strong> ${transcript.full_transcript.split(' ').length}</p>
-          <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
-        </div>
-        
-        <h2>Full Transcript</h2>
-        <div class="full-transcript">
-          ${transcript.full_transcript}
-        </div>
-        
-        <h2>Timestamped Segments</h2>
-        ${transcript.segments.map(segment => `
-          <div class="segment">
-            <div class="time">${segment.start_time} - ${segment.end_time}</div>
-            ${segment.speaker ? `<div class="speaker">Speaker: ${segment.speaker}</div>` : ''}
-            <div>${segment.text}</div>
-          </div>
-        `).join('')}
-        
-        <footer>
-          Generated by MyDent Scribe | ${new Date().toLocaleDateString()}
-        </footer>
-      </body>
-      </html>
-    `;
-    
-    // Write the content to the iframe
-    const iframeDocument = printIframe.contentWindow?.document;
-    if (iframeDocument) {
-      iframeDocument.open();
-      iframeDocument.write(content);
-      iframeDocument.close();
-      
-      // Wait for content to load
-      setTimeout(() => {
-        // Print/save as PDF
-        printIframe.contentWindow?.print();
-        
-        // Remove the iframe after printing
-        setTimeout(() => {
-          document.body.removeChild(printIframe);
-        }, 100);
-      }, 500);
-    }
-  };
+ 
 
   // Copy to clipboard
   const copyToClipboard = () => {
@@ -686,9 +627,7 @@ export default function ScribePage() {
                       <Button variant="outline" size="sm" className="flex items-center gap-1" onClick={copyToClipboard}>
                         <span className="text-base">📋</span> Copy
                       </Button>
-                      <Button variant="outline" size="sm" className="flex items-center gap-1" onClick={downloadAsPDF}>
-                        <span className="text-base">📄</span> Save as PDF
-                      </Button>
+                      
                     </div>
                   </CardTitle>
                 </CardHeader>
