@@ -418,7 +418,6 @@ export default function ScribePage() {
         <h1>${documentTitle}</h1>
         
         <div class="info">
-          <p><strong>Duration:</strong> ${Math.round(transcript.total_duration)} seconds</p>
           <p><strong>Segments:</strong> ${transcript.segments_count}</p>
           <p><strong>Words:</strong> ${transcript.full_transcript.split(' ').length}</p>
           <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
@@ -696,12 +695,7 @@ export default function ScribePage() {
                 <CardContent className="space-y-6">
                   {/* Stats */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-gray-100 p-4 rounded-lg text-center">
-                      <div className="text-2xl font-bold text-blue-600">
-                        {Math.round(transcription.transcript.total_duration)}s
-                      </div>
-                      <div className="text-sm text-gray-600">Duration</div>
-                    </div>
+                   
                     <div className="bg-gray-100 p-4 rounded-lg text-center">
                       <div className="text-2xl font-bold text-blue-600">
                         {transcription.transcript.segments_count}
