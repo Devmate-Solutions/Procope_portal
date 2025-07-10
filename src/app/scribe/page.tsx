@@ -417,7 +417,12 @@ export default function ScribePage() {
       <body>
         <h1>${documentTitle}</h1>
         
-
+        <div class="info">
+          <p><strong>Duration:</strong> ${Math.round(transcript.total_duration)} seconds</p>
+          <p><strong>Segments:</strong> ${transcript.segments_count}</p>
+          <p><strong>Words:</strong> ${transcript.full_transcript.split(' ').length}</p>
+          <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
+        </div>
         
         <h2>Full Transcript</h2>
         <div class="full-transcript">
