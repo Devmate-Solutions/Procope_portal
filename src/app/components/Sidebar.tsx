@@ -41,10 +41,13 @@ export default function Sidebar() {
     { name: 'Call Analytics', path: '/analytics', icon: <FaChartLine className="w-5 h-5" /> },
   ];
 const claimsMenuItems: SidebarItem[] = [
-  
   { name: 'Submit Claim', path: '/pdf-extractor', icon: <FaChartLine className="w-5 h-5" /> },
+  { name: 'Claims Archive', path: '/claims-archive', icon: <FaChartLine className="w-5 h-5" /> },
 ];
-
+const templateMenuItems: SidebarItem[] = [
+  
+  { name: 'Template 1', path: '/template-1', icon: <FaChartLine className="w-5 h-5" /> },
+];
 
   const menuItems: SidebarItem[] = [
     
@@ -170,6 +173,33 @@ const claimsMenuItems: SidebarItem[] = [
             ))}
           </ul>
         </nav>
+
+
+
+      {/* Template Section */}
+      <nav className="mt-2 px-2"> 
+        {!collapsed && (
+          <div className="px-4 mb-2">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Templates
+            </h3>
+          </div>
+        )}
+        <ul className="space-y-2"> 
+          {templateMenuItems.map((item) => (
+            <li key={item.path}>
+              <Link href={item.path} className={`flex items-center px-4 py-3 rounded-lg transition-colors  
+                  ${isActive(item.path)
+                    ? 'bg-[#1F4280]/10 text-[#1F4280]'
+                    : 'text-gray-600 hover:bg-[#1F4280]/5 hover:text-[#1F4280]'
+                  }`}>
+                <span className="flex items-center justify-center w-5 h-5 mr-3">{item.icon}</span>
+                {!collapsed && <span className="font-medium">{item.name}</span>}
+              </Link>
+            </li>
+          ))}
+           </ul>
+      </nav>
       {/* Admin/Owner Only Section */}
       {user && (user.role === 'admin' || user.role === 'owner') && (
         <div className="mt-8">
