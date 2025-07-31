@@ -316,67 +316,61 @@ export default function CreateCallsPage() {
       setError('No data to process');
       return;
     }
-    
+
     setProcessingBatch(true);
     setError(null);
-    setBatchProgress({
-      total: csvData.length,
-      processed: 0,
-      success: 0,
-      failed: 0
-    });
-    
-    // Process each row with delay
-    for (let i = 0; i < csvData.length; i++) {
-      const row = csvData[i];
-      
-      try {
-       
-        
-        
-        // Create the call
-        await createSingleCall(
-          row.phoneNumber, 
-          row.customerName, 
-          row.metadata
-        );
-        
-        // Update progress
-        setBatchProgress(prev => ({
-          ...prev,
-          processed: prev.processed + 1,
-          success: prev.success + 1
-        }));
-        
-        // Wait for the specified delay before next call (except for the last item)
-        if (i < csvData.length - 1) {
-          const delayMs = formData.delayMinutes * 60 * 1000;
-         
-          await new Promise(resolve => setTimeout(resolve, delayMs));
+
+    try {
+      // Map csvData to the required call_patients format
+      const call_patients = csvData.map(row => ({
+        call_status: "not-called",
+        date_for_post_op_follow_up: row.metadata?.date_for_post_op_follow_up || "",
+        created_at: new Date().toISOString(),
+        date_of_birth: row.metadata?.date_of_birth || "",
+        follow_up_appointment: row.metadata?.follow_up_appointment || "",
+        post_treatment_notes: row.metadata?.post_treatment_notes || "",
+        updated_at: new Date().toISOString(),
+        last_name: row.metadata?.last_name || "",
+        treatment: row.metadata?.treatment || "",
+        first_name: row.metadata?.first_name || "",
+        post_ops_follow_up_notes: row.metadata?.post_ops_follow_up_notes || "",
+        phone_number: row.phoneNumber || "",
+        post_op_call_status: row.metadata?.post_op_call_status || "not-called",
+        post_treatment_prescription: row.metadata?.post_treatment_prescription || "",
+        patient_id: row.metadata?.patient_id || "",
+      }));
+
+      // Send the batch to your webhook as { call_patients: [...] }
+      const response = await fetch(
+        "https://n8n-app.eastus.cloudapp.azure.com:5678/webhook/64602fde-f5b2-4baf-b9a8-91d641ffe69c",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ call_patients }),
         }
-      } catch (error: any) {
-       
-        
-        
-        // Update progress
-        setBatchProgress(prev => ({
-          ...prev,
-          processed: prev.processed + 1,
-          failed: prev.failed + 1
-        }));
-        
-        // Continue with next item after delay
-        if (i < csvData.length - 1) {
-          const delayMs = formData.delayMinutes * 60 * 1000;
-          await new Promise(resolve => setTimeout(resolve, delayMs));
-        }
+      );
+
+      // Log the raw response for debugging
+      const respText = await response.text();
+      console.log("Batch API raw response:", respText);
+
+      if (!response.ok) {
+        throw new Error("Batch call API failed");
       }
-    }
-    
-    setProcessingBatch(false);
-    setShowCsvTable(false);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+
+      setSuccess({ call_id: "Batch submitted" });
+      setShowCsvTable(false);
+      setCsvFile(null);
+      setCsvData([]);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    } catch (error: any) {
+      setError(`Batch call failed: ${error.message}`);
+    } finally {
+      setProcessingBatch(false);
     }
   };
 
@@ -596,93 +590,6 @@ export default function CreateCallsPage() {
             {/* CSV Upload Section */}
             {showCsvTable && !processingBatch && (
               <div className="space-y-6">
-                {/* From Number and Agent ID */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      From Number <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="fromNumber"
-                      value={formData.fromNumber}
-                      onChange={handleChange}
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                      placeholder="+1234567890 (include country code)"
-                      required
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Must be a number you own in Retell with country code (E.164 format)
-                    </p>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Agent Outbound <span className="text-red-500">*</span>
-                    </label>
-                    {getOutboundAgentIds().length > 1 ? (
-                      <select
-                        name="agentId"
-                        value={formData.agentId}
-                        onChange={handleChange}
-                        className="w-full p-2 border border-gray-300 rounded-md"
-                        required
-                      >
-                        {getOutboundAgentIds().map((agentId: string) => {
-                          const agentName = agentNames[agentId];
-                          let displayName = "Outbound Agent";
-
-                          if (agentName && agentName.toLowerCase().includes('outbound')) {
-                            displayName = "Outbound Agent";
-                          }
-
-                          return (
-                            <option key={agentId} value={agentId}>
-                              {displayName}
-                            </option>
-                          );
-                        })}
-                      </select>
-                    ) : (
-                      <input
-                        type="text"
-                        name="agentId"
-                        value={formData.agentId}
-                        onChange={handleChange}
-                        className="w-full p-2 border border-gray-300 rounded-md bg-gray-50"
-                        required
-                        readOnly
-                      />
-                    )}
-                    <p className="text-xs text-gray-500 mt-1">
-                      Outbound agents only for batch calls
-                    </p>
-                  </div>
-                </div>
-                
-                {/* Delay Between Calls */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Delay Between Calls (minutes) <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    name="delayMinutes"
-                    value={formData.delayMinutes}
-                    onChange={handleChange}
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                  >
-                    <option value="1">1 minute</option>
-                    <option value="5">5 minutes</option>
-                    <option value="10">10 minutes</option>
-                    <option value="15">15 minutes</option>
-                    <option value="30">30 minutes</option>
-                    <option value="60">1 hour</option>
-                  </select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Time to wait between each call to avoid rate limiting
-                  </p>
-                </div>
-                
                 {/* CSV Upload */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
