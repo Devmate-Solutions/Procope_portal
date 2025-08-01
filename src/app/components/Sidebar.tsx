@@ -46,7 +46,7 @@ const claimsMenuItems: SidebarItem[] = [
 ];
 const templateMenuItems: SidebarItem[] = [
   
-  { name: 'Template 1', path: '/template-1', icon: <FaChartLine className="w-5 h-5" /> },
+  { name: 'Post-op call', path: '/template-1', icon: <FaChartLine className="w-5 h-5" /> },
 ];
 
   const menuItems: SidebarItem[] = [

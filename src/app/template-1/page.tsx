@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Eye, Upload, X, FileText, Users } from "lucide-react"
+import { Eye, Upload, X, FileText, Users, Search } from "lucide-react"
 
 interface CsvRow {
   phoneNumber: string
@@ -63,6 +63,9 @@ export default function CreateCallsPage() {
 
   // Modal state
   const [modalData, setModalData] = useState<PatientModalData | null>(null)
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState<string>("")
 
   const [processingBatch, setProcessingBatch] = useState(false)
   const [batchProgress, setBatchProgress] = useState<{
@@ -336,6 +339,30 @@ export default function CreateCallsPage() {
     }
   }
 
+  // Filter patients based on search query
+  const filteredPatients = patients.filter((patient) => {
+    if (!searchQuery.trim()) return true
+    
+    const searchTerm = searchQuery.toLowerCase()
+    const searchableFields = [
+      patient.first_name,
+      patient.last_name,
+      patient.phone_number,
+      patient.treatment,
+      patient.post_treatment_notes,
+      patient.post_treatment_prescription,
+      patient.post_ops_follow_up_notes,
+      patient.date_of_birth,
+      patient.follow_up_appointment,
+      patient.call_status,
+      patient.post_op_call_status
+    ]
+    
+    return searchableFields.some(field => 
+      field && field.toString().toLowerCase().includes(searchTerm)
+    )
+  })
+
   const getStatusBadge = (status: string) => {
     const variant = status === "called" ? "default" : "secondary"
     const className =
@@ -426,12 +453,24 @@ export default function CreateCallsPage() {
             <TabsContent value="archive" className="space-y-6">
               <Card>
                 <CardHeader className="pb-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-4">
                     <CardTitle className="flex items-center gap-2">
                       <Users className="h-5 w-5" />
                       Patient Archive
                     </CardTitle>
-                    <div className="text-sm text-gray-500">{patients.length} patients total</div>
+                    <div className="text-sm text-gray-500">
+                      {searchQuery ? `${filteredPatients.length} of ${patients.length} patients` : `${patients.length} patients total`}
+                    </div>
+                  </div>
+                  <div className="relative max-w-md">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <input
+                      type="text"
+                      placeholder="Search patients by name, phone, treatment..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -443,13 +482,15 @@ export default function CreateCallsPage() {
                         <p className="text-gray-400 text-sm">Please wait while we fetch the data</p>
                       </div>
                     </div>
-                  ) : patients.length === 0 ? (
+                  ) : filteredPatients.length === 0 ? (
                     <div className="text-center py-16">
                       <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                         <Users className="h-12 w-12 text-gray-400" />
                       </div>
                       <h3 className="text-lg font-medium text-gray-900 mb-2">No patients found</h3>
-                      <p className="text-gray-500">No patient data is currently available in the system.</p>
+                      <p className="text-gray-500">
+                        {searchQuery ? `No patients match "${searchQuery}"` : "No patient data is currently available in the system."}
+                      </p>
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
@@ -477,7 +518,7 @@ export default function CreateCallsPage() {
                                   DOB
                                 </th>
                                 <th
-                                  scope="col"
+                                   scope="col"
                                   className="px-3 py-3.5 text-left text-xs font-medium border-r border-gray-300  text-gray-500 uppercase tracking-wider min-w-[130px]"
                                 >
                                   Phone Number
@@ -533,7 +574,7 @@ export default function CreateCallsPage() {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200 bg-white">
-                              {patients.map((patient, idx) => (
+                              {filteredPatients.map((patient, idx) => (
                                 <tr key={idx} className="hover:bg-gray-50 transition-colors">
                                   {/* First Name - Sticky */}
                                   <td className="sticky left-0 z-10 bg-white hover:bg-gray-50 px-3 py-4 text-sm border-r border-gray-300">
@@ -649,8 +690,8 @@ export default function CreateCallsPage() {
                           <div>
                             <p className="text-sm text-gray-700">
                               Showing <span className="font-medium">1</span> to{" "}
-                              <span className="font-medium">{patients.length}</span> of{" "}
-                              <span className="font-medium">{patients.length}</span> results
+                              <span className="font-medium">{filteredPatients.length}</span> of{" "}
+                              <span className="font-medium">{filteredPatients.length}</span> results
                             </p>
                           </div>
                           <div>
