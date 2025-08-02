@@ -1,128 +1,91 @@
 "use client"
 
-import Image from 'next/image';
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Loader2, Eye, EyeOff } from 'lucide-react'
-import logo from '../../../public/logov2.png'
-import { login, getStoredToken, getCurrentUser } from '@/lib/auth'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Alert } from '@/components/ui/alert'
+import { Eye, EyeOff, LogIn } from 'lucide-react'
+import { login, getCurrentUser } from '@/lib/auth'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [passwordChangeRequired, setPasswordChangeRequired] = useState(false)
+  const [error, setError] = useState('')
   const router = useRouter()
 
-  // Check if user is already logged in
   useEffect(() => {
-    const token = getStoredToken();
-    if (token) {
-      const user = getCurrentUser();
-      if (user) {
-        console.log('✅ User already logged in, redirecting to dashboard');
-        router.push('/dashboard');
-      }
+    // Check if user is already logged in
+    const user = getCurrentUser()
+    if (user) {
+      router.push('/dashboard')
     }
-  }, [router]);
+  }, [router])
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
     if (!email || !password) {
-      setError('Please enter both email and password');
-      return;
+      setError('Please enter both email and password')
+      return
     }
+
+    setIsLoading(true)
+    setError('')
 
     try {
-      setIsLoading(true);
-      setError('');
-      setPasswordChangeRequired(false);
-
-      console.log('🔄 Attempting login with:', { email, password: '***' });
-      const result = await login(email, password);
-      console.log('📥 Login result:', result);
-
+      console.log('🔐 Attempting login for:', email)
+      const result = await login(email, password)
+      
       if (result.success) {
-        console.log('✅ Login successful, redirecting to dashboard');
-        // Add a small delay to ensure token is stored
-        setTimeout(() => {
-          router.push('/dashboard');
-        }, 100);
+        console.log('✅ Login successful, redirecting to dashboard')
+        router.push('/dashboard')
+      } else if (result.requiresPasswordChange) {
+        setError('Password change required. Please contact your administrator.')
       } else {
-        // Check for password change required message
-        if (result.error && result.error.toLowerCase().includes('password change required')) {
-          setPasswordChangeRequired(true);
-          setError('Password change required. Please set a new password.');
-        } else {
-          console.log('❌ Login failed:', result.error);
-          setError(result.error || 'Login failed');
-        }
+        setError(result.error || 'Login failed')
       }
     } catch (error) {
-      console.error('Login error:', error);
-      setError('Network error during login. Please try again.');
+      console.error('❌ Login error:', error)
+      setError('Network error. Please check your connection and try again.')
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-lg border-none">
-        <CardHeader className="text-center text-white py-8 rounded-t-lg">
-          <div className="flex justify-center mb-4">
-           <h1 className=' text-[#1F4280] font-bold text-2xl'>MyDent.AI</h1>
-          </div>
-          <CardTitle className="text-2xl text-[#1F4280]">
-            Dashboard Login
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl font-bold text-gray-900">
+            Sign In
           </CardTitle>
+          <p className="text-gray-600">
+            Access your Retell AI dashboard
+          </p>
         </CardHeader>
-        <CardContent className="p-8">
-          <form onSubmit={handleLogin} className="space-y-6">
-            {error && (
-              <div className="text-red-500 text-sm text-center bg-red-50 p-3 rounded-md">
-                {error}
-                {passwordChangeRequired && (
-                  <div className="mt-2">
-                    <button
-                      type="button"
-                      className="text-blue-600 underline text-sm"
-                      onClick={() => router.push(`/reset-password?email=${encodeURIComponent(email)}`)}
-                    >
-                      Set a new password
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-              User name
-              </Label>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="provided username"
-                required
+                placeholder="Enter your email"
                 disabled={isLoading}
-                className="w-full"
+                autoComplete="email"
+                required
               />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-medium text-gray-700">
-                Password
-              </Label>
+            
+            <div>
+              <Label htmlFor="password">Password</Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -130,14 +93,16 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
-                  required
                   disabled={isLoading}
-                  className="w-full pr-10"
+                  autoComplete="current-password"
+                  required
                 />
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   disabled={isLoading}
                 >
                   {showPassword ? (
@@ -145,27 +110,42 @@ export default function LoginPage() {
                   ) : (
                     <Eye className="h-4 w-4 text-gray-400" />
                   )}
-                </button>
+                </Button>
               </div>
             </div>
 
-            <Button
-              type="submit"
-              variant="default"
-              size="default"
+            {error && (
+              <Alert className="border-red-200 bg-red-50">
+                <div className="text-red-600 text-sm">{error}</div>
+              </Alert>
+            )}
+
+            <Button 
+              type="submit" 
+              className="w-full" 
               disabled={isLoading}
-              className="w-full bg-[#1F4280] hover:bg-[#1F4280]/90 transition-colors"
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                   Signing in...
                 </>
               ) : (
-                'Sign In'
+                <>
+                  <LogIn className="mr-2 h-4 w-4" />
+                  Sign In
+                </>
               )}
             </Button>
           </form>
+
+          <div className="mt-6 text-center text-sm text-gray-600">
+            <p>Demo Credentials:</p>
+            <div className="mt-2 space-y-1 text-xs">
+              <p><strong>Orasurg:</strong> admin@orasurg.com / Admin@OraSurg#2025</p>
+              <p><strong>MyDentAI:</strong> ayazmomin@gmail.com / MyDent@AI#2025</p>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

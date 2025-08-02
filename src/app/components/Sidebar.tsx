@@ -1,238 +1,143 @@
-'use client';
+"use client"
 
-import Image from 'next/image';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useState, useEffect } from 'react';
-import {
-  FaPhoneAlt,
-  FaHistory,
-  FaChartLine,
-  FaBars,
-  FaTimes,
-  FaUsers,
-  FaUserPlus,
-  FaMicrophoneAlt
-} from 'react-icons/fa';
-import { getCurrentUser } from '@/lib/auth';
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { cn } from '@/lib/utils'
+import { 
+  BarChart3, 
+  Phone, 
+  PhoneCall, 
+  Users, 
+  FileText, 
+  Archive,
+  Mic,
+  History,
+  UserPlus,
+  LayoutDashboard
+} from 'lucide-react'
+import { getCurrentUser, hasPageAccess } from '@/lib/auth'
+import { useEffect, useState } from 'react'
 
-
-interface SidebarItem {
-  name: string;
-  path: string;
-  icon: React.ReactNode;
+interface SidebarProps {
+  className?: string
 }
 
-export default function Sidebar() {
-  const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
-  const [user, setUser] = useState<any>(null);
+export function Sidebar({ className }: SidebarProps) {
+  const pathname = usePathname()
+  const [user, setUser] = useState(getCurrentUser())
 
   useEffect(() => {
-    const currentUser = getCurrentUser();
-    setUser(currentUser);
-  }, []);
+    setUser(getCurrentUser())
+  }, [])
 
-  // Voice Assistant section links
-  const voiceMenuItems: SidebarItem[] = [
-    { name: 'Dashboard', path: '/', icon: <FaChartLine className="w-5 h-5" /> },
-    { name: 'Create Calls', path: '/create-calls', icon: <FaPhoneAlt className="w-5 h-5" /> },
-    { name: 'Call History', path: '/call-history', icon: <FaHistory className="w-5 h-5" /> },
-    { name: 'Call Analytics', path: '/analytics', icon: <FaChartLine className="w-5 h-5" /> },
-  ];
-const claimsMenuItems: SidebarItem[] = [
-  { name: 'Submit Claim', path: '/pdf-extractor', icon: <FaChartLine className="w-5 h-5" /> },
-  { name: 'Claims Archive', path: '/claims-archive', icon: <FaChartLine className="w-5 h-5" /> },
-];
-const templateMenuItems: SidebarItem[] = [
-  
-  { name: 'out bound call', path: '/template-1', icon: <FaChartLine className="w-5 h-5" /> },
-];
+  // Define navigation items with their required page access
+  const navigationItems = [
+    {
+      name: 'Dashboard',
+      href: '/dashboard',
+      icon: LayoutDashboard,
+      requiredPage: 'dashboard'
+    },
+    {
+      name: 'Call History',
+      href: '/call-history',
+      icon: History,
+      requiredPage: 'call-history'
+    },
+    {
+      name: 'Analytics',
+      href: '/analytics',
+      icon: BarChart3,
+      requiredPage: 'analytics'
+    },
+    {
+      name: 'Create Calls',
+      href: '/create-calls',
+      icon: PhoneCall,
+      requiredPage: 'create-calls'
+    },
+    {
+      name: 'Scribe',
+      href: '/scribe',
+      icon: Mic,
+      requiredPage: 'scribe'
+    },
+    {
+      name: 'Scribe History',
+      href: '/scribe-history',
+      icon: FileText,
+      requiredPage: 'scribe-history'
+    },
+    {
+      name: 'Claims Archive',
+      href: '/claims-archive',
+      icon: Archive,
+      requiredPage: 'claims-archive'
+    },
+    {
+      name: 'User Management',
+      href: '/user-management',
+      icon: Users,
+      requiredPage: 'user-management'
+    },
+    {
+      name: 'Add User',
+      href: '/add-user',
+      icon: UserPlus,
+      requiredPage: 'add-user'
+    }
+  ]
 
-  const menuItems: SidebarItem[] = [
-    
-    { name: 'Record Session', path: '/scribe', icon: <FaChartLine className="w-5 h-5" /> },
-    { name: 'Scribe History', path: '/scribe-history', icon: <FaChartLine className="w-5 h-5" /> },
-  
-  ];
-
-  // Admin/Owner only menu items
-  const adminMenuItems: SidebarItem[] = [
-    { name: 'User Management', path: '/user-management', icon: <FaUsers className="w-5 h-5" /> },
-    { name: 'Add User', path: '/add-user', icon: <FaUserPlus className="w-5 h-5" /> },
-  ];
-
-  const isActive = (path: string) => {
-    return pathname === path || pathname?.startsWith(`${path}/`);
-  };
+  // Filter navigation items based on user's page access
+  const accessibleItems = navigationItems.filter(item => 
+    hasPageAccess(user, item.requiredPage)
+  )
 
   return (
-    <div
-      className={`bg-white border-r border-gray-100 h-full transition-all duration-300 shadow-sm
-      ${collapsed ? 'w-20' : 'w-64'}`}
-    >
-      <div className="flex items-center justify-between p-4 border-b border-gray-100">
-        <div className="flex justify-center mb-4">
-          <h1 className="text-[#1F4280] font-bold text-2xl">MyDent.AI</h1>
-        </div>
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
-        >
-          {collapsed ? <FaBars className="w-5 h-5" /> : <FaTimes className="w-5 h-5" />}
-        </button>
-      </div>
-
-      {/* Voice Assistant Section */}
-      <nav className="mt-6 px-2">
-        {!collapsed && (
-          <div className="px-4 mb-2">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Voice Assistant
-            </h3>
-          </div>
-        )}
-        <ul className="space-y-2 mb-4">
-          {voiceMenuItems.map((item) => (
-            <li key={item.path}>
-              <Link
-                href={item.path}
-                className={`flex items-center px-4 py-3 rounded-lg transition-colors
-                  ${isActive(item.path)
-                    ? 'bg-[#1F4280]/10 text-[#1F4280]'
-                    : 'text-gray-600 hover:bg-[#1F4280]/5 hover:text-[#1F4280]'
-                  }`}
-              >
-                <span className="flex items-center justify-center w-5 h-5 mr-3">
-                  {item.icon}
-                </span>
-                {!collapsed && <span className="font-medium">{item.name}</span>}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
-
-      {/* Main Menu Items */}
-      <nav className="mt-2 px-2">
-      {!collapsed && (
-          <div className="px-4 mb-2">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Scribe
-            </h3>
-          </div>
-        )}
-        <ul className="space-y-2">
-          {menuItems.map((item) => (
-            <li key={item.path}>
-              <Link
-                href={item.path}
-                className={`flex items-center px-4 py-3 rounded-lg transition-colors
-                  ${isActive(item.path)
-                    ? 'bg-[#1F4280]/10 text-[#1F4280]'
-                    : 'text-gray-600 hover:bg-[#1F4280]/5 hover:text-[#1F4280]'
-                  }`}
-              >
-                <span className="flex items-center justify-center w-5 h-5 mr-3">
-                  {item.icon}
-                </span>
-                {!collapsed && <span className="font-medium">{item.name}</span>}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
-     
-
-      {/* Claims Section */}
-      <nav className="mt-2 px-2">
-        {!collapsed && (
-          <div className="px-4 mb-2">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-             Claims
-            </h3>
-          </div>
-        )}
-        <ul className="space-y-2">
-          {claimsMenuItems.map((item) => (
-            <li key={item.path}>
-              <Link
-                href={item.path}
-                className={`flex items-center px-4 py-3 rounded-lg transition-colors  
-                  ${isActive(item.path)
-                    ? 'bg-[#1F4280]/10 text-[#1F4280]'
-                    : 'text-gray-600 hover:bg-[#1F4280]/5 hover:text-[#1F4280]'
-                  }`}
-                >
-                  <span className="flex items-center justify-center w-5 h-5 mr-3">
-                    {item.icon}
-                  </span>
-                  {!collapsed && <span className="font-medium">{item.name}</span>}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-
-
-      {/* Template Section */}
-      <nav className="mt-2 px-2"> 
-        {!collapsed && (
-          <div className="px-4 mb-2">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Templates
-            </h3>
-          </div>
-        )}
-        <ul className="space-y-2"> 
-          {templateMenuItems.map((item) => (
-            <li key={item.path}>
-              <Link href={item.path} className={`flex items-center px-4 py-3 rounded-lg transition-colors  
-                  ${isActive(item.path)
-                    ? 'bg-[#1F4280]/10 text-[#1F4280]'
-                    : 'text-gray-600 hover:bg-[#1F4280]/5 hover:text-[#1F4280]'
-                  }`}>
-                <span className="flex items-center justify-center w-5 h-5 mr-3">{item.icon}</span>
-                {!collapsed && <span className="font-medium">{item.name}</span>}
-              </Link>
-            </li>
-          ))}
-           </ul>
-      </nav>
-      {/* Admin/Owner Only Section */}
-      {user && (user.role === 'admin' || user.role === 'owner') && (
-        <div className="mt-8">
-          {!collapsed && (
-            <div className="px-4 mb-3">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Administration
-              </h3>
-            </div>
-          )}
-          <ul className="space-y-2">
-            {adminMenuItems.map((item) => (
-              <li key={item.path}>
+    <div className={cn("pb-12 w-64", className)}>
+      <div className="space-y-4 py-4">
+        <div className="px-3 py-2">
+          <div className="space-y-1">
+            {accessibleItems.map((item) => {
+              const Icon = item.icon
+              return (
                 <Link
-                  href={item.path}
-                  className={`flex items-center px-4 py-3 rounded-lg transition-colors
-                    ${isActive(item.path)
-                      ? 'bg-[#1F4280]/10 text-[#1F4280]'
-                      : 'text-gray-600 hover:bg-[#1F4280]/5 hover:text-[#1F4280]'
-                    }`}
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors",
+                    pathname === item.href 
+                      ? "bg-accent text-accent-foreground" 
+                      : "text-muted-foreground"
+                  )}
                 >
-                  <span className="flex items-center justify-center w-5 h-5 mr-3">
-                    {item.icon}
-                  </span>
-                  {!collapsed && <span className="font-medium">{item.name}</span>}
+                  <Icon className="mr-2 h-4 w-4" />
+                  {item.name}
                 </Link>
-              </li>
-            ))}
-          </ul>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+      
+      {/* User info section */}
+      {user && (
+        <div className="px-3 py-2 border-t">
+          <div className="text-xs text-muted-foreground">
+            <div className="font-medium">{user.displayName}</div>
+            <div>{user.workspaceName}</div>
+            <div className="capitalize">{user.role}</div>
+            {user.allowedPages && (
+              <div className="mt-1">
+                <div className="text-xs font-medium">Access:</div>
+                <div className="text-xs">
+                  {user.allowedPages.join(', ')}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
-
-      
     </div>
-  );
-} 
+  )
+}

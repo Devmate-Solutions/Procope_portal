@@ -274,4 +274,4 @@ export default async function ClaimsArchivePage() {
       </div>
     </AuthenticatedLayout>
   );
-} 
+}

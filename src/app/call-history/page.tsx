@@ -16,7 +16,7 @@ import { FaChevronLeft, FaChevronRight, FaCalendarAlt } from 'react-icons/fa';
 import { getCalls, getPhoneNumbers } from '@/lib/aws-api';
 import { getCurrentUser } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
-import AuthenticatedLayout from '../components/AuthenticatedLayout';
+import {AuthenticatedLayout } from '../components/AuthenticatedLayout';
 
 // Define the type for call data
 type CallRecord = {

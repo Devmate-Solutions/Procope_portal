@@ -100,4 +100,4 @@ export const loginRequest = {
     'email'       // Email address access
   ],
   prompt: 'select_account' // Force account selection
-}; 
+};

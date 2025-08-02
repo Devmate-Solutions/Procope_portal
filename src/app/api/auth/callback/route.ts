@@ -24,4 +24,4 @@ export async function GET(request: NextRequest) {
 // Helper function to generate token (you'll need to import this from your existing auth library)
 async function generateToken(payload: any): Promise<string> {
   return generateToken(payload)
-} 
+}

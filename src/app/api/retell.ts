@@ -243,4 +243,3 @@ export async function getCallHistory(apiKey: string, filters?: any) {
   
   return fetchCallsWithPagination(apiKey, agentFilters);
 }
-

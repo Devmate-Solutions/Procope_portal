@@ -1,56 +1,63 @@
-'use client';
+"use client"
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { getCurrentUser } from '@/lib/auth';
-import Sidebar from './Sidebar';
-import Navbar from './Navbar';
+import { useEffect, useState } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
+import { getCurrentUser, hasPageAccess, type UserProfile } from '@/lib/auth'
+import { Navbar } from './Navbar'
+import { Sidebar } from './Sidebar'
 
 interface AuthenticatedLayoutProps {
-  children: React.ReactNode;
+  children: React.ReactNode
+  requiredPage?: string
 }
 
-export default function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
+export function AuthenticatedLayout({ children, requiredPage }: AuthenticatedLayoutProps) {
+  const [user, setUser] = useState<UserProfile | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter()
+  const pathname = usePathname()
 
   useEffect(() => {
-    const user = getCurrentUser();
-    if (user) {
-      setIsAuthenticated(true);
-    } else {
-      router.push('/login');
+    const currentUser = getCurrentUser()
+    
+    if (!currentUser) {
+      console.log('❌ No user found, redirecting to login')
+      router.push('/login')
+      return
     }
-    setIsLoading(false);
-  }, [router]);
+
+    // Check page access if required
+    if (requiredPage && !hasPageAccess(currentUser, requiredPage)) {
+      console.log(`❌ User doesn't have access to page: ${requiredPage}`)
+      router.push('/dashboard') // Redirect to dashboard if no access
+      return
+    }
+
+    setUser(currentUser)
+    setIsLoading(false)
+  }, [router, requiredPage, pathname])
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1F4280] mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
       </div>
-    );
+    )
   }
 
-  if (!isAuthenticated) {
-    return null; // Will redirect to login
+  if (!user) {
+    return null // Will redirect to login
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <div className="h-full">
-        <Sidebar />
-      </div>
-      <div className="flex flex-col flex-1 overflow-x-hidden overflow-y-auto">
-        <Navbar />
-        <main className="flex-grow">
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+      <div className="flex">
+        <Sidebar className="fixed left-0 top-16 h-[calc(100vh-4rem)] bg-white border-r" />
+        <main className="flex-1 ml-64 p-6">
           {children}
         </main>
       </div>
     </div>
-  );
+  )
 }

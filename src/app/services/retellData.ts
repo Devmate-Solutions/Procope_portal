@@ -357,4 +357,4 @@ export const generateChartData = (calls: RetellCall[], metricType: string, timeU
       borderWidth: 1,
     }]
   };
-}; 
+};

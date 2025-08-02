@@ -18,6 +18,53 @@ export interface UserProfile {
   iss: string;
 }
 
+// Page access mapping for template-based access
+export const PAGE_ACCESS_TEMPLATES = {
+  template1: ['basic', 'dashboard', 'call-history', 'analytics', 'create-calls', 'user-management'],
+  basic: ['dashboard', 'call-history'],
+  scribe: ['dashboard', 'call-history', 'scribe', 'scribe-history'],
+  claims: ['dashboard', 'call-history', 'claims-archive'],
+  usermanage: ['dashboard', 'call-history', 'user-management', 'add-user']
+};
+
+// Check if user has access to a specific page
+export function hasPageAccess(user: UserProfile | null, page: string): boolean {
+  if (!user || !user.allowedPages) return false;
+  
+  // Check direct page access
+  if (user.allowedPages.includes(page)) return true;
+  
+  // Check template-based access
+  for (const allowedPage of user.allowedPages) {
+    const template = PAGE_ACCESS_TEMPLATES[allowedPage as keyof typeof PAGE_ACCESS_TEMPLATES];
+    if (template && template.includes(page)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+// Get all accessible pages for a user
+export function getAccessiblePages(user: UserProfile | null): string[] {
+  if (!user || !user.allowedPages) return [];
+  
+  const accessiblePages = new Set<string>();
+  
+  for (const allowedPage of user.allowedPages) {
+    // Add the page itself
+    accessiblePages.add(allowedPage);
+    
+    // Add template pages
+    const template = PAGE_ACCESS_TEMPLATES[allowedPage as keyof typeof PAGE_ACCESS_TEMPLATES];
+    if (template) {
+      template.forEach(page => accessiblePages.add(page));
+    }
+  }
+  
+  return Array.from(accessiblePages);
+}
+
 // Decode token - handles both JWT and Base64-encoded JSON formats
 export function decodeToken(token: string): UserProfile | null {
   try {
@@ -105,7 +152,7 @@ export function getCurrentUser(): UserProfile | null {
 }
 
 // Login function - calls AWS API Gateway
-export async function login(email: string, password: string): Promise<{ success: boolean; token?: string; error?: string }> {
+export async function login(email: string, password: string): Promise<{ success: boolean; token?: string; error?: string; requiresPasswordChange?: boolean }> {
   try {
     console.log('🌐 Making login request to:', `${AWS_API_BASE}/auth/login`);
     const response = await fetch(`${AWS_API_BASE}/auth/login`, {
@@ -120,15 +167,29 @@ export async function login(email: string, password: string): Promise<{ success:
     const data = await response.json();
     console.log('📦 Response data:', data);
 
-    if (response.ok && data.token) {
-      console.log('💾 Storing token...');
-      storeToken(data.token);
-      console.log('✅ Token stored successfully');
-      return { success: true, token: data.token };
-    } else {
-      console.log('❌ Login failed:', data);
-      return { success: false, error: data.error || data.message || 'Login failed' };
+    if (response.ok && data.success) {
+      if (data.requiresPasswordChange) {
+        return { 
+          success: false, 
+          requiresPasswordChange: true,
+          error: data.error || 'Password change required'
+        };
+      }
+      
+      if (data.token) {
+        console.log('💾 Storing token...');
+        storeToken(data.token);
+        console.log('✅ Token stored successfully');
+        return { success: true, token: data.token };
+      }
     }
+    
+    console.log('❌ Login failed:', data);
+    return { 
+      success: false, 
+      error: data.error || data.message || 'Login failed',
+      requiresPasswordChange: data.requiresPasswordChange || false
+    };
   } catch (error) {
     console.error('🚨 Login network error:', error);
     return { success: false, error: 'Network error during login' };
@@ -138,21 +199,9 @@ export async function login(email: string, password: string): Promise<{ success:
 // Logout function
 export async function logout(): Promise<void> {
   try {
-    const token = getStoredToken();
-    // if (token) {
-    //   // Call logout endpoint
-    //   await fetch(`${AZURE_API_BASE}/logout`, {
-    //     method: 'POST',
-    //     headers: {
-    //       'Authorization': `Bearer ${token}`,
-    //       'Content-Type': 'application/json',
-    //     },
-    //   });
-    // }
+    // Always remove token locally (AWS backend doesn't require logout endpoint)
+    removeToken();
   } catch (error) {
     console.error('Logout error:', error);
-  } finally {
-    // Always remove token locally
-    removeToken();
   }
 }

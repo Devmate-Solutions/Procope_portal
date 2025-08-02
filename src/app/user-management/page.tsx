@@ -1,389 +1,660 @@
-'use client';
+"use client"
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { 
-  FaUserPlus, 
-  FaTrash, 
-  FaEdit,
-  FaUsers,
-  FaShieldAlt
-} from 'react-icons/fa';
-import { getCurrentUser } from '@/lib/auth';
-import AuthenticatedLayout from '../components/AuthenticatedLayout';
-import Link from 'next/link';
-import { Dialog } from '@headlessui/react';
+import { useEffect, useState } from 'react'
+import { AuthenticatedLayout } from '@/app/components/AuthenticatedLayout'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Users, UserPlus, Edit, Trash2, Key, Eye, EyeOff } from 'lucide-react'
+import { getUsers, createUser, updateUser, deleteUser, resetUserPassword, getAgents } from '@/lib/aws-api'
+import { getCurrentUser } from '@/lib/auth'
 
 interface User {
-  id: string;
-  email: string;
-  displayName: string;
-  role: 'owner' | 'admin' | 'subadmin';
-  agentIds?: string[];
-  workspaceName?: string;
-  createdAt?: string;
-  lastLogin?: string;
-  isActive?: boolean;
+  user_email: string
+  display_name: string
+  role: string
+  agent_ids: string[]
+  allowed_pages: string[]
+  account_enabled: boolean
+  workspace_id: string
+  user_id?: string
+  has_temporary_password?: boolean
 }
 
+const ROLES = [
+  { value: 'user', label: 'User' },
+  { value: 'subadmin', label: 'Sub Admin' },
+  { value: 'admin', label: 'Admin' },
+  { value: 'owner', label: 'Owner' }
+]
+
+const PAGE_TEMPLATES = [
+  { value: 'basic', label: 'Basic (Dashboard, Call History)' },
+  { value: 'template1', label: 'Template 1 (Dashboard, Analytics, Outbound, User Mgmt)' },
+  { value: 'scribe', label: 'Scribe (+ AI Transcription)' },
+  { value: 'claims', label: 'Claims (+ Insurance Processing)' },
+  { value: 'usermanage', label: 'User Management Only' }
+]
+
 export default function UserManagementPage() {
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [users, setUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [editUser, setEditUser] = useState<User | null>(null);
-  const [editForm, setEditForm] = useState({ email: '', displayName: '', role: 'subadmin' });
-  const [editLoading, setEditLoading] = useState(false);
-  const [editError, setEditError] = useState<string | null>(null);
-  const router = useRouter();
+  const [users, setUsers] = useState<User[]>([])
+  const [agents, setAgents] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [showPassword, setShowPassword] = useState(false)
+
+  // Form states
+  const [formData, setFormData] = useState({
+    user_email: '',
+    display_name: '',
+    role: 'user',
+    agent_ids: [] as string[],
+    allowed_pages: [] as string[],
+    password: '',
+    account_enabled: true
+  })
+
+  const [passwordData, setPasswordData] = useState({
+    newPassword: '',
+    confirmPassword: ''
+  })
+
+  const currentUser = getCurrentUser()
 
   useEffect(() => {
-    const user = getCurrentUser();
-    if (!user) {
-      router.push('/login');
-      return;
-    }
+    loadData()
+  }, [])
 
-    // Check if user has admin or owner role
-    if (user.role !== 'admin' && user.role !== 'owner') {
-      router.push('/dashboard');
-      return;
-    }
-
-    setCurrentUser(user);
-    fetchUsers();
-  }, [router]);
-
-  const fetchUsers = async () => {
+  const loadData = async () => {
     try {
-      setIsLoading(true);
-      setError(null);
-      // Get auth token
-      const token = localStorage.getItem('auth_token');
-      if (!token) throw new Error('Not authenticated');
-      const response = await fetch('https://func-retell425.azurewebsites.net/api/users', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      const data = await response.json();
-      if (data.success && Array.isArray(data.users)) {
-        setUsers(data.users);
-      } else {
-        setError(data.error || 'Failed to load users');
-        setUsers([]);
+      setIsLoading(true)
+      setError(null)
+
+      const [usersData, agentsData] = await Promise.allSettled([
+        getUsers(),
+        getAgents()
+      ])
+
+      if (usersData.status === 'fulfilled') {
+        setUsers(Array.isArray(usersData.value) ? usersData.value : usersData.value.users || [])
       }
-    } catch (err: any) {
-      console.error('Failed to fetch users:', err);
-      setError('Failed to load users');
-      setUsers([]);
+
+      if (agentsData.status === 'fulfilled') {
+        setAgents(Array.isArray(agentsData.value) ? agentsData.value : [])
+      }
+
+    } catch (error) {
+      console.error('Failed to load data:', error)
+      setError(error instanceof Error ? error.message : 'Failed to load data')
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
-  const handleDeleteUser = async (userId: string, userRole: string) => {
-    if (!currentUser) return;
-
-    // Prevent deletion based on role restrictions
-    if (currentUser.role === 'admin' && userRole === 'owner') {
-      alert('Admins cannot delete owners');
-      return;
-    }
-
-    if (currentUser.id === userId) {
-      alert('You cannot delete yourself');
-      return;
-    }
-
-    if (confirm('Are you sure you want to delete this user?')) {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const token = localStorage.getItem('auth_token');
-        if (!token) throw new Error('Not authenticated');
-        const response = await fetch(`https://func-retell425.azurewebsites.net/api/users/${userId}`,
-          {
-            method: 'DELETE',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          }
-        );
-        const data = await response.json();
-        if (data.success) {
-          setUsers(users.filter(user => user.id !== userId));
-        } else {
-          setError(data.error || 'Failed to delete user');
-        }
-      } catch (err: any) {
-        console.error('Failed to delete user:', err);
-        setError('Failed to delete user');
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  };
-
-  const canDeleteUser = (user: User) => {
-    if (!currentUser) return false;
-
-    // Owner can delete anyone except themselves
-    if (currentUser.role === 'owner') {
-      return user.id !== currentUser.id;
-    }
-
-    // Admin can delete admins and subadmins (except owners and themselves)
-    if (currentUser.role === 'admin') {
-      return user.role !== 'owner' && user.id !== currentUser.id;
-    }
-
-    return false;
-  };
-
-  const getRoleBadgeVariant = (role: string) => {
-    switch (role) {
-      case 'owner':
-        return 'default';
-      case 'admin':
-        return 'secondary';
-      case 'subadmin':
-        return 'outline';
-      default:
-        return 'outline';
-    }
-  };
-
-  const openEditModal = (user: User) => {
-    setEditUser(user);
-    setEditForm({ email: user.email, displayName: user.displayName, role: user.role });
-    setEditError(null);
-    setIsEditOpen(true);
-  };
-
-  const closeEditModal = () => {
-    setIsEditOpen(false);
-    setEditUser(null);
-    setEditError(null);
-  };
-
-  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setEditForm({ ...editForm, [e.target.name]: e.target.value });
-  };
-
-  const handleEditSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editUser) return;
-    setEditLoading(true);
-    setEditError(null);
+  const handleCreateUser = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
-      if (!token) throw new Error('Not authenticated');
-      const response = await fetch(`https://func-retell425.azurewebsites.net/api/users/${editUser.id}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            email: editForm.email,
-            displayName: editForm.displayName,
-            role: editForm.role,
-            agentIds: currentUser.agentIds || [],
-            workspaceId: currentUser.workspaceId,
-          }),
-        }
-      );
-      const data = await response.json();
-      if (data.success) {
-        setUsers(users.map(u =>
-          u.id === editUser.id
-            ? {
-                ...u,
-                email: editForm.email,
-                displayName: editForm.displayName,
-                role: editForm.role as 'owner' | 'admin' | 'subadmin',
-              }
-            : u
-        ));
-        closeEditModal();
-        fetchUsers();
-      } else {
-        setEditError(data.error || 'Failed to update user');
+      if (!formData.user_email || !formData.display_name) {
+        setError('Email and display name are required')
+        return
       }
-    } catch (err: any) {
-      setEditError(err.message || 'Failed to update user');
-    } finally {
-      setEditLoading(false);
-    }
-  };
 
-  if (!currentUser) {
-    return <div>Loading...</div>;
+      await createUser({
+        user_email: formData.user_email,
+        display_name: formData.display_name,
+        role: formData.role,
+        agent_ids: formData.agent_ids,
+        allowed_pages: formData.allowed_pages,
+        password: formData.password || undefined
+      })
+
+      setIsCreateDialogOpen(false)
+      resetForm()
+      loadData()
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to create user')
+    }
+  }
+
+  const handleUpdateUser = async () => {
+    try {
+      if (!selectedUser) return
+
+      await updateUser(selectedUser.user_email, {
+        display_name: formData.display_name,
+        role: formData.role,
+        agent_ids: formData.agent_ids,
+        allowed_pages: formData.allowed_pages,
+        account_enabled: formData.account_enabled
+      })
+
+      setIsEditDialogOpen(false)
+      setSelectedUser(null)
+      resetForm()
+      loadData()
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to update user')
+    }
+  }
+
+  const handleDeleteUser = async (email: string) => {
+    try {
+      if (!confirm('Are you sure you want to delete this user?')) return
+
+      await deleteUser(email)
+      loadData()
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to delete user')
+    }
+  }
+
+  const handleResetPassword = async () => {
+    try {
+      if (!selectedUser) return
+      if (passwordData.newPassword !== passwordData.confirmPassword) {
+        setError('Passwords do not match')
+        return
+      }
+      if (passwordData.newPassword.length < 6) {
+        setError('Password must be at least 6 characters')
+        return
+      }
+
+      await resetUserPassword(selectedUser.user_email, passwordData.newPassword, true)
+      
+      setIsPasswordDialogOpen(false)
+      setSelectedUser(null)
+      setPasswordData({ newPassword: '', confirmPassword: '' })
+      loadData()
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to reset password')
+    }
+  }
+
+  const resetForm = () => {
+    setFormData({
+      user_email: '',
+      display_name: '',
+      role: 'user',
+      agent_ids: [],
+      allowed_pages: [],
+      password: '',
+      account_enabled: true
+    })
+  }
+
+  const openEditDialog = (user: User) => {
+    setSelectedUser(user)
+    setFormData({
+      user_email: user.user_email,
+      display_name: user.display_name,
+      role: user.role,
+      agent_ids: user.agent_ids || [],
+      allowed_pages: user.allowed_pages || [],
+      password: '',
+      account_enabled: user.account_enabled
+    })
+    setIsEditDialogOpen(true)
+  }
+
+  const openPasswordDialog = (user: User) => {
+    setSelectedUser(user)
+    setPasswordData({ newPassword: '', confirmPassword: '' })
+    setIsPasswordDialogOpen(true)
+  }
+
+  const canManageUser = (user: User): boolean => {
+    if (!currentUser) return false
+    if (currentUser.role === 'owner') return true
+    if (currentUser.role === 'admin' && user.role !== 'owner') return true
+    return false
+  }
+
+  if (isLoading) {
+    return (
+      <AuthenticatedLayout requiredPage="user-management">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+      </AuthenticatedLayout>
+    )
   }
 
   return (
-    <AuthenticatedLayout>
-      <div className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <header className="bg-white shadow-sm border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <div className="flex items-center space-x-4">
-                <FaUsers className="h-6 w-6 text-[#1F4280]" />
-                <h1 className="text-2xl font-bold text-[#1F4280]">User Management</h1>
-              </div>
-              <Link href="/add-user">
-                <Button variant="default" size="default" className="flex items-center space-x-2">
-                  <FaUserPlus className="h-4 w-4" />
-                  <span>Add User</span>
-                </Button>
-              </Link>
-            </div>
+    <AuthenticatedLayout requiredPage="user-management">
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
+            <p className="text-muted-foreground">
+              Manage users and their permissions
+            </p>
           </div>
-        </header>
+          
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => { resetForm(); setIsCreateDialogOpen(true) }}>
+                <UserPlus className="mr-2 h-4 w-4" />
+                Add User
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Create New User</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.user_email}
+                      onChange={(e) => setFormData({ ...formData, user_email: e.target.value })}
+                      placeholder="user@example.com"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="displayName">Display Name</Label>
+                    <Input
+                      id="displayName"
+                      value={formData.display_name}
+                      onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
+                      placeholder="John Doe"
+                    />
+                  </div>
+                </div>
 
-        {/* Main Content */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-md">
-              {error}
-            </div>
-          )}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="role">Role</Label>
+                    <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ROLES.map((role) => (
+                          <SelectItem key={role.value} value={role.value}>
+                            {role.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="password">Password (Optional)</Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        placeholder="Leave empty for auto-generated"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
 
-          {/* User List */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <FaShieldAlt className="h-5 w-5" />
-                <span>Workspace Users</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="text-center py-8">
-                  <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
-                  <p className="mt-2 text-gray-600">Loading users...</p>
+                <div>
+                  <Label>Page Access Templates</Label>
+                  <div className="space-y-2 mt-2">
+                    {PAGE_TEMPLATES.map((template) => (
+                      <div key={template.value} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={template.value}
+                          checked={formData.allowed_pages.includes(template.value)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setFormData({
+                                ...formData,
+                                allowed_pages: [...formData.allowed_pages, template.value]
+                              })
+                            } else {
+                              setFormData({
+                                ...formData,
+                                allowed_pages: formData.allowed_pages.filter(p => p !== template.value)
+                              })
+                            }
+                          }}
+                        />
+                        <Label htmlFor={template.value} className="text-sm">
+                          {template.label}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ) : users.length === 0 ? (
-                <div className="text-center py-12">
-                  <FaUsers className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No users found</h3>
-                  <p className="text-gray-600 mb-6">Get started by adding your first user.</p>
-                  <Link href="/add-user">
-                    <Button variant="default" size="default" className="">
-                      <FaUserPlus className="h-4 w-4 mr-2" />
-                      Add User
-                    </Button>
-                  </Link>
+
+                <div>
+                  <Label>Agent Access</Label>
+                  <div className="space-y-2 mt-2 max-h-32 overflow-y-auto">
+                    {agents.map((agent) => (
+                      <div key={agent.agent_id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={agent.agent_id}
+                          checked={formData.agent_ids.includes(agent.agent_id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setFormData({
+                                ...formData,
+                                agent_ids: [...formData.agent_ids, agent.agent_id]
+                              })
+                            } else {
+                              setFormData({
+                                ...formData,
+                                agent_ids: formData.agent_ids.filter(id => id !== agent.agent_id)
+                              })
+                            }
+                          }}
+                        />
+                        <Label htmlFor={agent.agent_id} className="text-sm">
+                          {agent.agent_name || agent.agent_id}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          User
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Role
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Last Login
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {users.map((user) => (
-                        <tr key={user.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">{user.displayName}</div>
-                              <div className="text-sm text-gray-500">{user.email}</div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <Badge variant={getRoleBadgeVariant(user.role)}>
-                              {user.role}
-                            </Badge>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <Badge variant={user.isActive ? 'default' : 'secondary'}>
-                              {user.isActive ? 'Active' : 'Inactive'}
-                            </Badge>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                            <Button variant="outline" size="sm" className="" onClick={() => openEditModal(user)}>
-                              <FaEdit className="h-3 w-3" />
-                            </Button>
-                            {canDeleteUser(user) && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleDeleteUser(user.id, user.role)}
-                                className="text-red-600 hover:text-red-700"
-                              >
-                                <FaTrash className="h-3 w-3" />
-                              </Button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+
+                {error && (
+                  <div className="text-red-600 text-sm">{error}</div>
+                )}
+
+                <div className="flex justify-end space-x-2">
+                  <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleCreateUser}>
+                    Create User
+                  </Button>
                 </div>
-              )}
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {error && (
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="pt-6">
+              <p className="text-red-600">{error}</p>
             </CardContent>
           </Card>
-        </main>
-      </div>
+        )}
 
-      {/* Edit User Modal */}
-      <Dialog open={isEditOpen} onClose={closeEditModal} className="fixed z-50 inset-0 overflow-y-auto">
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="fixed inset-0 bg-black opacity-30" aria-hidden="true" />
-          <div className="relative bg-white rounded-lg shadow-lg p-8 w-full max-w-md z-10">
-            <Dialog.Title className="text-lg font-bold mb-4">Edit User</Dialog.Title>
-            {editError && <div className="mb-2 text-red-600">{editError}</div>}
-            <form onSubmit={handleEditSave} className="space-y-4">
+        {/* Users Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Users ({users.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {users.length > 0 ? (
+                users.map((user) => (
+                  <div key={user.user_email} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{user.display_name}</span>
+                        <Badge variant={user.account_enabled ? 'default' : 'secondary'}>
+                          {user.account_enabled ? 'Active' : 'Disabled'}
+                        </Badge>
+                        {user.has_temporary_password && (
+                          <Badge variant="outline">Temp Password</Badge>
+                        )}
+                      </div>
+                      <div className="text-sm text-muted-foreground">{user.user_email}</div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{user.role}</Badge>
+                        <span className="text-xs text-muted-foreground">
+                          Pages: {user.allowed_pages?.join(', ') || 'None'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Agents: {user.agent_ids?.length || 0} assigned
+                      </div>
+                    </div>
+                    
+                    {canManageUser(user) && (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openEditDialog(user)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openPasswordDialog(user)}
+                        >
+                          <Key className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteUser(user.user_email)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>No users found</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Edit User Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Edit User</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="editEmail">Email</Label>
+                  <Input
+                    id="editEmail"
+                    value={formData.user_email}
+                    disabled
+                    className="bg-gray-50"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="editDisplayName">Display Name</Label>
+                  <Input
+                    id="editDisplayName"
+                    value={formData.display_name}
+                    onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="editRole">Role</Label>
+                  <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ROLES.map((role) => (
+                        <SelectItem key={role.value} value={role.value}>
+                          {role.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="editEnabled"
+                    checked={formData.account_enabled}
+                    onCheckedChange={(checked) => setFormData({ ...formData, account_enabled: !!checked })}
+                  />
+                  <Label htmlFor="editEnabled">Account Enabled</Label>
+                </div>
+              </div>
+
               <div>
-                <label className="block text-sm font-medium mb-1">Email</label>
-                <input name="email" type="email" value={editForm.email} onChange={handleEditChange} className="w-full border rounded px-3 py-2" required />
+                <Label>Page Access Templates</Label>
+                <div className="space-y-2 mt-2">
+                  {PAGE_TEMPLATES.map((template) => (
+                    <div key={template.value} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`edit-${template.value}`}
+                        checked={formData.allowed_pages.includes(template.value)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setFormData({
+                              ...formData,
+                              allowed_pages: [...formData.allowed_pages, template.value]
+                            })
+                          } else {
+                            setFormData({
+                              ...formData,
+                              allowed_pages: formData.allowed_pages.filter(p => p !== template.value)
+                            })
+                          }
+                        }}
+                      />
+                      <Label htmlFor={`edit-${template.value}`} className="text-sm">
+                        {template.label}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
               </div>
+
               <div>
-                <label className="block text-sm font-medium mb-1">Display Name</label>
-                <input name="displayName" value={editForm.displayName} onChange={handleEditChange} className="w-full border rounded px-3 py-2" required />
+                <Label>Agent Access</Label>
+                <div className="space-y-2 mt-2 max-h-32 overflow-y-auto">
+                  {agents.map((agent) => (
+                    <div key={agent.agent_id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`edit-${agent.agent_id}`}
+                        checked={formData.agent_ids.includes(agent.agent_id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setFormData({
+                              ...formData,
+                              agent_ids: [...formData.agent_ids, agent.agent_id]
+                            })
+                          } else {
+                            setFormData({
+                              ...formData,
+                              agent_ids: formData.agent_ids.filter(id => id !== agent.agent_id)
+                            })
+                          }
+                        }}
+                      />
+                      <Label htmlFor={`edit-${agent.agent_id}`} className="text-sm">
+                        {agent.agent_name || agent.agent_id}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
               </div>
+
+              {error && (
+                <div className="text-red-600 text-sm">{error}</div>
+              )}
+
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleUpdateUser}>
+                  Update User
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Password Reset Dialog */}
+        <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Reset Password</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Role</label>
-                <select name="role" value={editForm.role} onChange={handleEditChange} className="w-full border rounded px-3 py-2">
-                  <option value="owner">Owner</option>
-                  <option value="admin">Admin</option>
-                  <option value="subadmin">Sub Admin</option>
-                </select>
+                <Label htmlFor="newPassword">New Password</Label>
+                <div className="relative">
+                  <Input
+                    id="newPassword"
+                    type={showPassword ? "text" : "password"}
+                    value={passwordData.newPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                    placeholder="Enter new password"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
               </div>
-              <div className="flex justify-end space-x-2 mt-4">
-                <button type="button" onClick={closeEditModal} className="px-4 py-2 rounded bg-gray-200">Cancel</button>
-                <button type="submit" disabled={editLoading} className="px-4 py-2 rounded bg-blue-600 text-white">{editLoading ? 'Saving...' : 'Save'}</button>
+              
+              <div>
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type={showPassword ? "text" : "password"}
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                  placeholder="Confirm new password"
+                />
               </div>
-            </form>
-          </div>
-        </div>
-      </Dialog>
+
+              {error && (
+                <div className="text-red-600 text-sm">{error}</div>
+              )}
+
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setIsPasswordDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleResetPassword}>
+                  Reset Password
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
     </AuthenticatedLayout>
-  );
+  )
 }

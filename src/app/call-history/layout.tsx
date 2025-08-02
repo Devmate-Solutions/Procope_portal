@@ -8,4 +8,4 @@ export default function CallHistoryLayout({
       {children}
     </section>
   );
-} 
+}

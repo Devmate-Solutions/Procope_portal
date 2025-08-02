@@ -1,232 +1,265 @@
-import { getStoredToken, getCurrentUser } from './auth';
-
 // AWS API Gateway base URL
 const AWS_API_BASE = 'https://u7zoq3e0ek.execute-api.us-east-1.amazonaws.com/prod';
 
-// Generic API call function with authentication
-async function makeAuthenticatedRequest(
-  endpoint: string,
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
-  body?: any
-): Promise<any> {
+// Get stored token from localStorage
+function getStoredToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('auth_token');
+}
+
+// Make authenticated API call to AWS backend
+async function makeAuthenticatedRequest(endpoint: string, options: RequestInit = {}) {
   const token = getStoredToken();
   
   if (!token) {
     throw new Error('No authentication token found');
   }
 
-  const headers: Record<string, string> = {
-    'Authorization': `Bearer ${token}`,
+  const headers = {
     'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+    ...options.headers,
   };
 
-  const config: RequestInit = {
-    method,
-    headers,
-  };
-
-  if (body && (method === 'POST' || method === 'PUT')) {
-    config.body = JSON.stringify(body);
-  }
-
-  const response = await fetch(`${AWS_API_BASE}${endpoint}`, config);
-  
-  if (!response.ok) {
-    const errorData = await response.text();
-    throw new Error(`API Error ${response.status}: ${errorData}`);
-  }
-
-  return response.json();
-}
-
-// Dashboard data
-export async function getDashboardData(): Promise<any> {
-  return makeAuthenticatedRequest('/retell/dashboard');
-}
-
-// Agent management
-export async function getAgents(): Promise<any> {
-  return makeAuthenticatedRequest('/retell/agent');
-}
-
-export async function getAgent(agentId: string): Promise<any> {
-  return makeAuthenticatedRequest(`/retell/agent/${agentId}`);
-}
-
-export async function createAgent(agentData: any): Promise<any> {
-  return makeAuthenticatedRequest('/retell/agent', 'POST', agentData);
-}
-
-export async function updateAgent(agentId: string, agentData: any): Promise<any> {
-  return makeAuthenticatedRequest(`/retell/agent/${agentId}`, 'PUT', agentData);
-}
-
-export async function deleteAgent(agentId: string): Promise<any> {
-  return makeAuthenticatedRequest(`/retell/agent/${agentId}`, 'DELETE');
-}
-
-// Phone number management - AWS system uses different endpoint structure
-export async function getPhoneNumbers(): Promise<any> {
-  // In AWS system, phone numbers are retrieved via retell proxy
-  return makeAuthenticatedRequest('/retell/phone-number');
-}
-
-export async function getPhoneNumber(phoneId: string): Promise<any> {
-  return makeAuthenticatedRequest(`/retell/phone-number/${phoneId}`);
-}
-
-export async function createPhoneNumber(phoneData: any): Promise<any> {
-  return makeAuthenticatedRequest('/retell/phone-number', 'POST', phoneData);
-}
-
-// Call management
-export async function getCalls(filters?: any): Promise<any> {
-  const queryParams = filters ? `?${new URLSearchParams(filters).toString()}` : '';
-  return makeAuthenticatedRequest(`/retell/call${queryParams}`);
-}
-
-export async function getCall(callId: string): Promise<any> {
-  return makeAuthenticatedRequest(`/retell/call/${callId}`);
-}
-
-export async function createCall(callData: any): Promise<any> {
-  // Format the call data to match AWS backend expectations
-  const formattedData = {
-    from_number: callData.from_number,
-    to_number: callData.to_number,
-    agent_id: callData.override_agent_id || callData.agent_id,
-    retell_llm_dynamic_variables: callData.retell_llm_dynamic_variables || {},
-    metadata: callData.metadata || {}
-  };
-  return makeAuthenticatedRequest('/retell/call', 'POST', formattedData);
-}
-
-export async function createBatchCalls(callsData: any): Promise<any> {
-  return makeAuthenticatedRequest('/retell/call/batch', 'POST', callsData);
-}
-
-// Analytics
-export async function getAnalytics(filters?: any): Promise<any> {
-  const queryParams = filters ? `?${new URLSearchParams(filters).toString()}` : '';
-  return makeAuthenticatedRequest(`/retell/analytics${queryParams}`);
-}
-
-// Recordings
-export async function getRecordings(filters?: any): Promise<any> {
-  const queryParams = filters ? `?${new URLSearchParams(filters).toString()}` : '';
-  return makeAuthenticatedRequest(`/retell/recordings${queryParams}`);
-}
-
-// User Management Functions
-export async function listWorkspaceUsers(): Promise<any> {
-  return makeAuthenticatedRequest('/users');
-}
-
-export async function createUser(userData: any): Promise<any> {
-  return makeAuthenticatedRequest('/users', 'POST', userData);
-}
-
-export async function updateUser(email: string, updateData: any): Promise<any> {
-  const encodedEmail = encodeURIComponent(email);
-  return makeAuthenticatedRequest(`/users/${encodedEmail}`, 'PUT', updateData);
-}
-
-export async function deleteUser(email: string): Promise<any> {
-  const encodedEmail = encodeURIComponent(email);
-  return makeAuthenticatedRequest(`/users/${encodedEmail}`, 'DELETE');
-}
-
-export async function adminResetPassword(resetData: any): Promise<any> {
-  return makeAuthenticatedRequest('/users/admin/reset-password', 'POST', resetData);
-}
-
-export async function userResetPassword(resetData: any): Promise<any> {
-  const useAuth = !!getStoredToken();
-  if (useAuth) {
-    return makeAuthenticatedRequest('/users/user/reset-password', 'POST', resetData);
-  } else {
-    // For non-authenticated password reset
-    const response = await fetch(`${AWS_API_BASE}/users/user/reset-password`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(resetData),
+  try {
+    console.log(`Making request to: ${AWS_API_BASE}${endpoint}`);
+    
+    const response = await fetch(`${AWS_API_BASE}${endpoint}`, {
+      ...options,
+      headers,
     });
-    
+
+    console.log(`Response status: ${response.status}`);
+
     if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(`API Error ${response.status}: ${errorData}`);
+      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorData.message || errorMessage;
+      } catch (e) {
+        // If response is not JSON, use status text
+        const errorText = await response.text().catch(() => '');
+        if (errorText) {
+          errorMessage = errorText;
+        }
+      }
+      
+      throw new Error(errorMessage);
     }
+
+    const data = await response.json();
+    console.log('Response data:', data);
+    return data;
     
-    return response.json();
+  } catch (error) {
+    console.error(`API Error for ${endpoint}:`, error);
+    throw error;
   }
 }
 
-// Page Management Functions
-export async function updateUserPages(email: string, pagesData: any): Promise<any> {
-  const encodedEmail = encodeURIComponent(email);
-  return makeAuthenticatedRequest(`/users/${encodedEmail}/pages`, 'PUT', pagesData);
-}
+// Get calls with filters
+export async function getCalls(filters: any = {}) {
+  try {
+    const queryParams = new URLSearchParams();
+    
+    // Add filters as query parameters
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, String(value));
+      }
+    });
 
-// Helper function to get user's accessible agent IDs
-export function getUserAgentIds(): string[] {
-  const user = getCurrentUser();
-  return user?.agentIds || [];
-}
-
-// Helper function to check if user has admin role
-export function isAdmin(): boolean {
-  const user = getCurrentUser();
-  return user?.role === 'admin' || user?.role === 'owner';
-}
-
-// Helper function to check if user has workspace admin role
-export function isWorkspaceAdmin(): boolean {
-  const user = getCurrentUser();
-  return user?.role === 'admin' || user?.role === 'owner';
-}
-
-// Helper function to get current workspace info
-export function getCurrentWorkspace(): { id: string; name: string } | null {
-  const user = getCurrentUser();
-  if (!user) return null;
-  
-  return {
-    id: user.workspaceId,
-    name: user.workspaceName
-  };
-}
-
-// Helper function to check page access
-export function hasPageAccess(pageName: string): boolean {
-  const user = getCurrentUser();
-  if (!user || !user.allowedPages) {
-    return false;
+    const endpoint = `/retell/call${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const data = await makeAuthenticatedRequest(endpoint);
+    
+    // Handle different response formats from backend
+    if (data.calls && Array.isArray(data.calls)) {
+      return data.calls;
+    } else if (Array.isArray(data)) {
+      return data;
+    } else {
+      return [];
+    }
+  } catch (error) {
+    console.error('Failed to fetch calls:', error);
+    // Return empty array instead of throwing to prevent UI crashes
+    return [];
   }
-  return user.allowedPages.includes(pageName);
 }
 
-// Available pages configuration
-export const AVAILABLE_PAGES = {
-  'basic': {
-    name: 'Basic Dashboard',
-    icon: '📊',
-    description: 'Core dashboard and calling features'
-  },
-  'scribe': {
-    name: 'Scribe',
-    icon: '🎤',
-    description: 'AI transcription and documentation'
-  },
-  'claims': {
-    name: 'Claims',
-    icon: '📄',
-    description: 'Insurance claims processing'
-  },
-  'usermanage': {
-    name: 'User Management',
-    icon: '👥',
-    description: 'User administration and access control'
+// Get analytics data
+export async function getAnalytics(filters: any = {}) {
+  try {
+    const queryParams = new URLSearchParams();
+    
+    // Add filters as query parameters
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, String(value));
+      }
+    });
+
+    const endpoint = `/retell/analytics${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return await makeAuthenticatedRequest(endpoint);
+  } catch (error) {
+    console.error('Failed to fetch analytics:', error);
+    // Return default analytics structure
+    return {
+      callCount: 0,
+      callDuration: { totalDuration: 0, formattedDuration: '0m 0s' },
+      callLatency: 0,
+      callSuccessData: { successful: 0, unsuccessful: 0, unknown: 0 },
+      disconnectionData: {},
+      directionData: { inbound: 0, outbound: 0, unknown: 0 },
+      callAnalytics: { sentiments: {}, voicemails: 0, totalCost: 0, averageTokens: 0 }
+    };
   }
-};
+}
+
+// Create a single call
+export async function createCall(callData: {
+  from_number: string;
+  to_number: string;
+  agent_id: string;
+  retell_llm_dynamic_variables?: any;
+  metadata?: any;
+}) {
+  try {
+    return await makeAuthenticatedRequest('/retell/call', {
+      method: 'POST',
+      body: JSON.stringify(callData),
+    });
+  } catch (error) {
+    console.error('Failed to create call:', error);
+    throw error;
+  }
+}
+
+// Create batch calls
+export async function createBatchCalls(calls: any[]) {
+  try {
+    return await makeAuthenticatedRequest('/retell/call/batch', {
+      method: 'POST',
+      body: JSON.stringify({ calls }),
+    });
+  } catch (error) {
+    console.error('Failed to create batch calls:', error);
+    throw error;
+  }
+}
+
+// Get agents
+export async function getAgents() {
+  try {
+    const data = await makeAuthenticatedRequest('/retell/agent');
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error('Failed to fetch agents:', error);
+    return [];
+  }
+}
+
+// Get dashboard data
+export async function getDashboardData() {
+  try {
+    return await makeAuthenticatedRequest('/retell/dashboard');
+  } catch (error) {
+    console.error('Failed to fetch dashboard data:', error);
+    return {
+      user: null,
+      agents: [],
+      permissions: {},
+      stats: { totalAgents: 0, accessibleAgents: 0, workspaceRole: 'user' }
+    };
+  }
+}
+
+// Get recordings
+export async function getRecordings(filters: any = {}) {
+  try {
+    const queryParams = new URLSearchParams();
+    
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, String(value));
+      }
+    });
+
+    const endpoint = `/retell/recordings${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const data = await makeAuthenticatedRequest(endpoint);
+    
+    return data.recordings || [];
+  } catch (error) {
+    console.error('Failed to fetch recordings:', error);
+    return [];
+  }
+}
+
+// User management functions
+export async function getUsers() {
+  try {
+    return await makeAuthenticatedRequest('/users');
+  } catch (error) {
+    console.error('Failed to fetch users:', error);
+    return [];
+  }
+}
+
+export async function createUser(userData: {
+  user_email: string;
+  display_name: string;
+  role: string;
+  agent_ids: string[];
+  allowed_pages: string[];
+  password?: string;
+}) {
+  try {
+    return await makeAuthenticatedRequest('/users', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+  } catch (error) {
+    console.error('Failed to create user:', error);
+    throw error;
+  }
+}
+
+export async function updateUser(email: string, userData: any) {
+  try {
+    return await makeAuthenticatedRequest(`/users/${encodeURIComponent(email)}`, {
+      method: 'PUT',
+      body: JSON.stringify(userData),
+    });
+  } catch (error) {
+    console.error('Failed to update user:', error);
+    throw error;
+  }
+}
+
+export async function deleteUser(email: string) {
+  try {
+    return await makeAuthenticatedRequest(`/users/${encodeURIComponent(email)}`, {
+      method: 'DELETE',
+    });
+  } catch (error) {
+    console.error('Failed to delete user:', error);
+    throw error;
+  }
+}
+
+export async function resetUserPassword(email: string, newPassword: string, isAdmin: boolean = false) {
+  try {
+    const endpoint = isAdmin ? '/users/admin/reset-password' : '/users/user/reset-password';
+    return await makeAuthenticatedRequest(endpoint, {
+      method: 'POST',
+      body: JSON.stringify({ 
+        user_email: email, 
+        new_password: newPassword 
+      }),
+    });
+  } catch (error) {
+    console.error('Failed to reset password:', error);
+    throw error;
+  }
+}

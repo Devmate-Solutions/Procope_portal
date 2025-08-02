@@ -1,844 +1,559 @@
-'use client';
+"use client"
 
-import React, { useState, useRef, useEffect } from 'react';
-import Image from 'next/image';
-import { createCall, createBatchCalls, getPhoneNumbers } from '@/lib/aws-api';
-import { getCurrentUser } from '@/lib/auth';
-import { useRouter } from 'next/navigation';
-import AuthenticatedLayout from '../components/AuthenticatedLayout';
+import { useEffect, useState } from 'react'
+import { AuthenticatedLayout } from '@/app/components/AuthenticatedLayout'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
+import { PhoneCall, Upload, Download, Plus, Trash2, Play } from 'lucide-react'
+import { createCall, createBatchCalls, getAgents } from '@/lib/aws-api'
+import { getCurrentUser } from '@/lib/auth'
 
-// Default values - will be updated from user data
-const DEFAULT_FROM_NUMBER = '+16507478843'; // Your Retell phone number
-
-interface CallFormData {
-  fromNumber: string;
-  toNumber: string;
-  agentId: string;
-  customerName: string;
-  delayMinutes: number;
-}
-
-interface CsvRow {
-  phoneNumber: string;
-  customerName?: string;
-  metadata?: Record<string, string>;
+interface CallData {
+  from_number: string
+  to_number: string
+  agent_id: string
+  customer_name?: string
+  metadata?: Record<string, any>
 }
 
 export default function CreateCallsPage() {
-  const [user, setUser] = useState<any>(null);
-  const [agentNames, setAgentNames] = useState<Record<string, string>>({});
-  const [phoneNumbers, setPhoneNumbers] = useState<any[]>([]);
-  const router = useRouter();
+  const [agents, setAgents] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
 
-  const [formData, setFormData] = useState<CallFormData>({
-    fromNumber: DEFAULT_FROM_NUMBER,
-    toNumber: '',
-    agentId: '',
-    customerName: '',
-    delayMinutes: 15
-  });
+  // Single call form
+  const [singleCall, setSingleCall] = useState<CallData>({
+    from_number: '',
+    to_number: '',
+    agent_id: '',
+    customer_name: '',
+    metadata: {}
+  })
 
-  // Fetch agent names from phone numbers endpoint
-  const fetchAgentNames = async () => {
+  // Batch calls
+  const [batchCalls, setBatchCalls] = useState<CallData[]>([])
+  const [csvData, setCsvData] = useState('')
+  const [activeTab, setActiveTab] = useState<'single' | 'batch' | 'csv'>('single')
+
+  const currentUser = getCurrentUser()
+
+  useEffect(() => {
+    loadAgents()
+  }, [])
+
+  const loadAgents = async () => {
     try {
-      const phoneNumbersData = await getPhoneNumbers();
-      const nameMap: Record<string, string> = {};
-      const availableAgentIds: string[] = [];
+      const agentsData = await getAgents()
+      setAgents(Array.isArray(agentsData) ? agentsData : [])
+    } catch (error) {
+      console.error('Failed to load agents:', error)
+      setError('Failed to load agents')
+    }
+  }
 
-      if (Array.isArray(phoneNumbersData)) {
-        setPhoneNumbers(phoneNumbersData);
-        
-        phoneNumbersData.forEach((phoneData: any) => {
-          // Add inbound agent if exists
-          if (phoneData.inbound_agent_id) {
-            nameMap[phoneData.inbound_agent_id] = `InBound Agent (${phoneData.phone_number_pretty})`;
-            availableAgentIds.push(phoneData.inbound_agent_id);
-          }
-          // Add outbound agent if exists
-          if (phoneData.outbound_agent_id) {
-            nameMap[phoneData.outbound_agent_id] = `Outbound Agent (${phoneData.phone_number_pretty})`;
-            availableAgentIds.push(phoneData.outbound_agent_id);
-          }
-        });
-
-        // Set default from number to the first available phone number
-        if (phoneNumbersData.length > 0) {
-          setFormData(prev => ({
-            ...prev,
-            fromNumber: phoneNumbersData[0].phone_number_pretty
-          }));
-        }
-
-        // Set default agent to the first outbound agent if available, otherwise first available agent
-        const outboundAgents = phoneNumbersData
-          .filter(phoneData => phoneData.outbound_agent_id)
-          .map(phoneData => phoneData.outbound_agent_id);
-        
-        const defaultAgentId = outboundAgents.length > 0 ? outboundAgents[0] : availableAgentIds[0];
-        
-        if (defaultAgentId) {
-          setFormData(prev => ({
-            ...prev,
-            agentId: defaultAgentId
-          }));
-        }
-
-        // Update user object to include all available agents
-        if (user) {
-          setUser((prev: any) => ({
-            ...prev,
-            agentIds: availableAgentIds
-          }));
-        }
+  const handleSingleCall = async () => {
+    try {
+      if (!singleCall.from_number || !singleCall.to_number || !singleCall.agent_id) {
+        setError('From number, to number, and agent are required')
+        return
       }
 
-      setAgentNames(nameMap);
-      console.log('📋 Agent names loaded:', nameMap);
-      console.log('📞 Phone numbers loaded:', phoneNumbersData);
-      console.log('🤖 Available agents:', availableAgentIds);
-    } catch (error) {
-      console.error('Failed to fetch agent names:', error);
-    }
-  };
+      setIsLoading(true)
+      setError(null)
+      setSuccess(null)
 
-  // Initialize user and set default agent
-  useEffect(() => {
-    const currentUser = getCurrentUser();
-    if (!currentUser) {
-      router.push('/login');
-      return;
-    }
+      const callData = {
+        from_number: singleCall.from_number,
+        to_number: singleCall.to_number,
+        agent_id: singleCall.agent_id,
+        retell_llm_dynamic_variables: singleCall.customer_name ? {
+          customer_name: singleCall.customer_name
+        } : {},
+        metadata: singleCall.metadata || {}
+      }
 
-    setUser(currentUser);
-    // Fetch agent names first, which will set the default agent
-    fetchAgentNames();
-  }, [router]);
-  
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<{ call_id: string } | null>(null);
-  
-  // CSV related states
-  const [csvFile, setCsvFile] = useState<File | null>(null);
-  const [csvData, setCsvData] = useState<CsvRow[]>([]);
-  const [hasHeaders, setHasHeaders] = useState(true);
-  const [showCsvTable, setShowCsvTable] = useState(false);
-  const [processingBatch, setProcessingBatch] = useState(false);
-  const [batchProgress, setBatchProgress] = useState<{
-    total: number;
-    processed: number;
-    success: number;
-    failed: number;
-  }>({
-    total: 0,
-    processed: 0,
-    success: 0,
-    failed: 0
-  });
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-  
-  const formatPhoneNumber = (phoneNumber: string): string => {
-    // Clean the phone number
-    const cleaned = phoneNumber.trim().replace(/[^0-9+]/g, '');
-
-    // If it already starts with +, return as is
-    if (cleaned.startsWith('+')) {
-      return cleaned;
-    }
-
-    // For numbers without +, add + prefix (don't assume country code)
-    // User must provide the full international number including country code
-    if (cleaned.length > 0) {
-      return `+${cleaned}`;
-    }
-
-    return cleaned;
-  };
-  
-  const parseCSV = (text: string): CsvRow[] => {
-    // Split by new lines
-    const lines = text.split(/\r\n|\n/).filter(line => line.trim().length > 0);
-    if (lines.length === 0) return [];
-    
-    // Determine the delimiter (comma or semicolon)
-    const delimiter = lines[0].includes(';') ? ';' : ',';
-    
-    // Parse header row if present
-    const startIndex = hasHeaders ? 1 : 0;
-    const headers = hasHeaders ? 
-      lines[0].split(delimiter).map(h => h.trim().toLowerCase()) : 
-      ['phone_number', 'customer_name'];
-    
-   
-    // Find column indices
-    const phoneNumberIndex = headers.findIndex(h => 
-      h.includes('phone') || h.includes('number') || h.includes('tel'));
-    const nameIndex = headers.findIndex(h => 
-      h.includes('name') || h.includes('customer'));
-    
-    if (phoneNumberIndex === -1) {
-      throw new Error('Could not identify phone number column in CSV');
-    }
-    
-    // Parse rows
-    const parsedRows: CsvRow[] = [];
-    for (let i = startIndex; i < lines.length; i++) {
-      const row = lines[i].split(delimiter).map(cell => cell.trim());
-      
-      // Skip empty rows
-      if (row.every(cell => cell === '')) continue;
-      
-      // Extract phone number (required)
-      const phoneNumber = row[phoneNumberIndex];
-      if (!phoneNumber) continue;
-      
-      // Extract customer name if available
-      const customerName = nameIndex !== -1 ? row[nameIndex] : undefined;
-      
-      // Extract any additional metadata from other columns
-      const metadata: Record<string, string> = {};
-      headers.forEach((header, index) => {
-        // Skip phone number and name columns, add all others as metadata
-        if (index !== phoneNumberIndex && index !== nameIndex && row[index]) {
-          metadata[header] = row[index];
-        }
-      });
-      
-      parsedRows.push({
-        phoneNumber,
-        customerName,
-        metadata: Object.keys(metadata).length > 0 ? metadata : undefined
-      });
-    }
-    return parsedRows;
-  };
-  
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    try {
-      setCsvFile(file);
-      
-      // Read file content
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const text = event.target?.result as string;
-          const parsedData = parseCSV(text);
-          setCsvData(parsedData);
-          setShowCsvTable(true);
-          
-          
-        } catch (error: any) {
-          
-          setError(`Failed to parse CSV: ${error.message}`);
-        }
-      };
-      
-      reader.onerror = () => {
-        setError('Failed to read file');
-      };
-      
-      reader.readAsText(file);
-    } catch (err: any) {
-      
-      setError(`Failed to process CSV file: ${err.message}`);
-    }
-  };
-  
-  const cancelCSVImport = () => {
-    setShowCsvTable(false);
-    setCsvFile(null);
-    setCsvData([]);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-  
-  // Function to create a single call
-  const createSingleCall = async (
-    toNumber: string, 
-    customerName?: string, 
-    metadata?: Record<string, string>
-  ): Promise<string> => {
-    // Format phone numbers
-    const fromNumber = formatPhoneNumber(formData.fromNumber);
-    const formattedToNumber = formatPhoneNumber(toNumber);
-    
-    // Prepare dynamic variables
-    const dynamicVariables: Record<string, any> = {};
-    
-    // Add customer name if provided
-    if (customerName) {
-      dynamicVariables.customer_name = customerName;
-    }
-    
-    // Add all metadata as dynamic variables
-    if (metadata && Object.keys(metadata).length > 0) {
-
-      Object.entries(metadata).forEach(([key, value]) => {
-        // Convert keys to snake_case for the API
-        const snakeCaseKey = key.replace(/\s+/g, '_').toLowerCase();
-        dynamicVariables[snakeCaseKey] = value;
-      });
-    }
-    
-    // Prepare payload for Azure API
-    const payload = {
-      from_number: fromNumber,
-      to_number: formattedToNumber,
-      agent_id: formData.agentId,
-      override_agent_version: 1,
-      metadata: {},
-      // Only add retell_llm_dynamic_variables if we have variables to add
-      ...(Object.keys(dynamicVariables).length > 0 ? {
-        retell_llm_dynamic_variables: dynamicVariables
-      } : {})
-    };
-
-    console.log('Creating call with payload:', payload);
-
-    // Use Azure API
-    const data = await createCall(payload);
-    return data.call_id;
-  };
-  
-  // Handle single call submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-    
-    try {
-      const callId = await createSingleCall(
-        formData.toNumber, 
-        formData.customerName || undefined
-      );
-      
-      
-      setSuccess({ call_id: callId });
+      const result = await createCall(callData)
+      setSuccess(`Call created successfully! Call ID: ${result.call_id}`)
       
       // Reset form
-      setFormData(prev => ({
-        ...prev,
-        toNumber: '',
-        customerName: ''
-      }));
-      
-    } catch (err: any) {
+      setSingleCall({
+        from_number: '',
+        to_number: '',
+        agent_id: '',
+        customer_name: '',
+        metadata: {}
+      })
 
-      setError(err.message || 'Failed to create call. Please try again.');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to create call')
     } finally {
-      setLoading(false);
+      setIsLoading(false)
     }
-  };
-  
-  // Process CSV batch with delays between calls
-  const processCsvBatch = async () => {
-    if (csvData.length === 0) {
-      setError('No data to process');
-      return;
-    }
-    
-    setProcessingBatch(true);
-    setError(null);
-    setBatchProgress({
-      total: csvData.length,
-      processed: 0,
-      success: 0,
-      failed: 0
-    });
-    
-    // Process each row with delay
-    for (let i = 0; i < csvData.length; i++) {
-      const row = csvData[i];
+  }
+
+  const handleBatchCalls = async () => {
+    try {
+      if (batchCalls.length === 0) {
+        setError('No calls to process')
+        return
+      }
+
+      setIsLoading(true)
+      setError(null)
+      setSuccess(null)
+
+      const formattedCalls = batchCalls.map(call => ({
+        from_number: call.from_number,
+        to_number: call.to_number,
+        agent_id: call.agent_id,
+        retell_llm_dynamic_variables: call.customer_name ? {
+          customer_name: call.customer_name
+        } : {},
+        metadata: call.metadata || {}
+      }))
+
+      const result = await createBatchCalls(formattedCalls)
       
-      try {
-       
+      if (result.summary) {
+        setSuccess(`Batch completed:${result.summary.successful}/${result.summary.total} calls created successfully`)
         
-        
-        // Create the call
-        await createSingleCall(
-          row.phoneNumber, 
-          row.customerName, 
-          row.metadata
-        );
-        
-        // Update progress
-        setBatchProgress(prev => ({
-          ...prev,
-          processed: prev.processed + 1,
-          success: prev.success + 1
-        }));
-        
-        // Wait for the specified delay before next call (except for the last item)
-        if (i < csvData.length - 1) {
-          const delayMs = formData.delayMinutes * 60 * 1000;
-         
-          await new Promise(resolve => setTimeout(resolve, delayMs));
+        if (result.failed_calls && result.failed_calls.length > 0) {
+          setError(`Some calls failed: ${result.failed_calls.map(f => f.error).join(', ')}`)
         }
-      } catch (error: any) {
-       
+      } else {
+        setSuccess('Batch calls created successfully!')
+      }
+
+      // Reset batch calls
+      setBatchCalls([])
+
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to create batch calls')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const addBatchCall = () => {
+    setBatchCalls([...batchCalls, {
+      from_number: '',
+      to_number: '',
+      agent_id: '',
+      customer_name: '',
+      metadata: {}
+    }])
+  }
+
+  const updateBatchCall = (index: number, field: keyof CallData, value: string) => {
+    const updated = [...batchCalls]
+    updated[index] = { ...updated[index], [field]: value }
+    setBatchCalls(updated)
+  }
+
+  const removeBatchCall = (index: number) => {
+    setBatchCalls(batchCalls.filter((_, i) => i !== index))
+  }
+
+  const processCsvData = () => {
+    try {
+      if (!csvData.trim()) {
+        setError('Please enter CSV data')
+        return
+      }
+
+      const lines = csvData.trim().split('\n')
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
+      
+      // Validate headers
+      const requiredHeaders = ['from_number', 'to_number', 'agent_id']
+      const missingHeaders = requiredHeaders.filter(h => !headers.includes(h))
+      
+      if (missingHeaders.length > 0) {
+        setError(`Missing required headers: ${missingHeaders.join(', ')}`)
+        return
+      }
+
+      const calls: CallData[] = []
+      
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim())
+        if (values.length !== headers.length) continue
         
+        const call: CallData = {
+          from_number: '',
+          to_number: '',
+          agent_id: '',
+          customer_name: '',
+          metadata: {}
+        }
         
-        // Update progress
-        setBatchProgress(prev => ({
-          ...prev,
-          processed: prev.processed + 1,
-          failed: prev.failed + 1
-        }));
+        headers.forEach((header, index) => {
+          const value = values[index]
+          if (header === 'from_number') call.from_number = value
+          else if (header === 'to_number') call.to_number = value
+          else if (header === 'agent_id') call.agent_id = value
+          else if (header === 'customer_name') call.customer_name = value
+          else if (call.metadata) call.metadata[header] = value
+        })
         
-        // Continue with next item after delay
-        if (i < csvData.length - 1) {
-          const delayMs = formData.delayMinutes * 60 * 1000;
-          await new Promise(resolve => setTimeout(resolve, delayMs));
+        if (call.from_number && call.to_number && call.agent_id) {
+          calls.push(call)
         }
       }
+      
+      setBatchCalls(calls)
+      setActiveTab('batch')
+      setSuccess(`Loaded ${calls.length} calls from CSV`)
+      
+    } catch (error) {
+      setError('Failed to process CSV data')
     }
-    
-    setProcessingBatch(false);
-    setShowCsvTable(false);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
+  }
 
-  // Get available agent IDs from phone numbers data
-  const getAvailableAgentIds = () => {
-    const agentIds: string[] = [];
-    phoneNumbers.forEach((phoneData: any) => {
-      if (phoneData.inbound_agent_id) {
-        agentIds.push(phoneData.inbound_agent_id);
-      }
-      if (phoneData.outbound_agent_id) {
-        agentIds.push(phoneData.outbound_agent_id);
-      }
-    });
-    return agentIds;
-  };
+  const downloadCsvTemplate = () => {
+    const template = 'from_number,to_number,agent_id,customer_name\n+1234567890,+0987654321,agent_123,John Doe'
+    const blob = new Blob([template], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'call_template.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
-  // Get only outbound agent IDs from phone numbers data
-  const getOutboundAgentIds = () => {
-    const agentIds: string[] = [];
-    phoneNumbers.forEach((phoneData: any) => {
-      if (phoneData.outbound_agent_id) {
-        agentIds.push(phoneData.outbound_agent_id);
-      }
-    });
-    return agentIds;
-  };
-  
   return (
-    <AuthenticatedLayout>
-      <div className="min-h-screen bg-white">
-        <div className="container mx-auto px-6 py-12 max-w-7xl">
-        {/* Header with Logo */}
-     
+    <AuthenticatedLayout requiredPage="create-calls">
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Create Outbound Calls</h1>
+          <p className="text-muted-foreground">
+            Create single calls or batch process multiple calls
+          </p>
+        </div>
 
-        <div className="p-8">
-          <h1 className="text-2xl font-bold text-primary mb-6">Create Outbound Calls</h1>
-          
-          
-          <div className="bg-white rounded-lg shadow-md p-6">
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-md">
-                <p className="font-semibold">Error</p>
-                <p>{error}</p>
-              </div>
-            )}
-            
-            {success && (
-              <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-md">
-                <p className="font-semibold">Call Created Successfully!</p>
-                <p>Call ID: {success.call_id}</p>
-                <p className="text-sm mt-2">You can track this call in the Call History page.</p>
-              </div>
-            )}
-            
-            {processingBatch && (
-              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 text-blue-700 rounded-md">
-                <p className="font-semibold mb-2">Processing Batch Calls</p>
-                <div className="mb-2">
-                  <p>Progress: {batchProgress.processed} of {batchProgress.total} calls processed</p>
-                  <div className="w-full bg-gray-200 rounded-full h-2.5 mt-1">
-                    <div 
-                      className="bg-blue-600 h-2.5 rounded-full" 
-                      style={{ width: `${(batchProgress.processed / batchProgress.total) * 100}%` }}
-                    ></div>
-                  </div>
-                </div>
-                <p>Success: {batchProgress.success} calls</p>
-                <p>Failed: {batchProgress.failed} calls</p>
-                <p className="text-sm mt-2">Please do not close this page. Each call is being made with a {formData.delayMinutes} minute delay.</p>
-              </div>
-            )}
-            
-            {/* Tabs for single call vs CSV upload */}
-            <div className="mb-6 border-b border-gray-200">
-              <ul className="flex flex-wrap -mb-px text-sm font-medium text-center">
-                <li className="mr-2">
-                  <button
-                    className={`inline-block p-4 rounded-t-lg ${!showCsvTable ? 'border-b-2 border-blue-600 text-blue-600' : 'border-transparent hover:text-gray-600 hover:border-gray-300'}`}
-                    onClick={() => setShowCsvTable(false)}
-                    disabled={processingBatch}
-                  >
-                    Single Call
-                  </button>
-                </li>
-                <li className="mr-2">
-                  <button
-                    className={`inline-block p-4 rounded-t-lg ${showCsvTable ? 'border-b-2 border-blue-600 text-blue-600' : 'border-transparent hover:text-gray-600 hover:border-gray-300'}`}
-                    onClick={() => setShowCsvTable(true)}
-                    disabled={processingBatch}
-                  >
-                    Batch Upload (CSV)
-                  </button>
-                </li>
-              </ul>
-            </div>
-            
-            {/* Single Call Form */}
-            {!showCsvTable && !processingBatch && (
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* From Number */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      From Number <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="fromNumber"
-                      value={formData.fromNumber}
-                      onChange={handleChange}
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                      placeholder="+1234567890 (include country code)"
-                      required
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Must be a number you own in Retell (E.164 format)
-                    </p>
-                  </div>
-                  
-                  {/* To Number */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      To Number <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="toNumber"
-                      value={formData.toNumber}
-                      onChange={handleChange}
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                      placeholder="+44123456789 (include country code)"
-                      required
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      The recipient's phone number with country code (E.164 format). Examples: +1234567890 (US)
-                    </p>
-                  </div>
-                </div>
-                
-                {/* Agent Selection */}
+        {error && (
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="pt-6">
+              <p className="text-red-600">{error}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {success && (
+          <Card className="border-green-200 bg-green-50">
+            <CardContent className="pt-6">
+              <p className="text-green-600 whitespace-pre-line">{success}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Tab Navigation */}
+        <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg w-fit">
+          <button
+            onClick={() => setActiveTab('single')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'single' 
+                ? 'bg-white text-gray-900 shadow-sm' 
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Single Call
+          </button>
+          <button
+            onClick={() => setActiveTab('batch')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'batch' 
+                ? 'bg-white text-gray-900 shadow-sm' 
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Batch Calls ({batchCalls.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('csv')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'csv' 
+                ? 'bg-white text-gray-900 shadow-sm' 
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            CSV Import
+          </button>
+        </div>
+
+        {/* Single Call Tab */}
+        {activeTab === 'single' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <PhoneCall className="h-5 w-5" />
+                Create Single Call
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Agent <span className="text-red-500">*</span>
-                  </label>
-                  {getAvailableAgentIds().length > 1 ? (
-                    <select
-                      name="agentId"
-                      value={formData.agentId}
-                      onChange={handleChange}
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                      required
-                    >
-                      {getAvailableAgentIds().map((agentId: string) => {
-                        const agentName = agentNames[agentId];
-                        let displayName = agentId;
-
-                        if (agentName) {
-                          if (agentName.toLowerCase().includes('inbound')) {
-                            displayName = "InBound Agent";
-                          } else if (agentName.toLowerCase().includes('outbound')) {
-                            displayName = "Outbound Agent";
-                          } else {
-                            displayName = agentName.length > 30 ? agentName.substring(0, 30) + "..." : agentName;
-                          }
-                        }
-
-                        return (
-                          <option key={agentId} value={agentId}>
-                            {displayName}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  ) : (
-                    <input
-                      type="text"
-                      name="agentId"
-                      value={formData.agentId}
-                      onChange={handleChange}
-                      className="w-full p-2 border border-gray-300 rounded-md bg-gray-50"
-                      required
-                      readOnly
-                    />
-                  )}
-                  <p className="text-xs text-gray-500 mt-1">
-                    Workspace: {user?.workspaceName} - {getAvailableAgentIds().length || 0} agent(s) available
-                  </p>
+                  <Label htmlFor="fromNumber">From Number</Label>
+                  <Input
+                    id="fromNumber"
+                    value={singleCall.from_number}
+                    onChange={(e) => setSingleCall({ ...singleCall, from_number: e.target.value })}
+                    placeholder="+1234567890"
+                  />
                 </div>
-                
-                {/* Customer Name */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Customer Name (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    name="customerName"
-                    value={formData.customerName}
-                    onChange={handleChange}
-                    className="w-full p-2 border border-gray-300 rounded-md"
+                  <Label htmlFor="toNumber">To Number</Label>
+                  <Input
+                    id="toNumber"
+                    value={singleCall.to_number}
+                    onChange={(e) => setSingleCall({ ...singleCall, to_number: e.target.value })}
+                    placeholder="+0987654321"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="agent">Agent</Label>
+                  <Select 
+                    value={singleCall.agent_id} 
+                    onValueChange={(value) => setSingleCall({ ...singleCall, agent_id: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select an agent" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {agents.map((agent) => (
+                        <SelectItem key={agent.agent_id} value={agent.agent_id}>
+                          {agent.agent_name || agent.agent_id}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="customerName">Customer Name (Optional)</Label>
+                  <Input
+                    id="customerName"
+                    value={singleCall.customer_name}
+                    onChange={(e) => setSingleCall({ ...singleCall, customer_name: e.target.value })}
                     placeholder="John Doe"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Will be passed to the agent as a dynamic variable
-                  </p>
                 </div>
-                
-                {/* Submit Button */}
-                <div className="flex justify-end">
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className={`px-6 py-2 rounded-md text-white font-medium 
-                      ${loading ? 'bg-primary/50 cursor-not-allowed' : 'bg-primary hover:bg-primary/90'}`}
-                  >
-                    {loading ? 'Creating Call...' : 'Create Call'}
-                  </button>
-                </div>
-              </form>
-            )}
-            
-            {/* CSV Upload Section */}
-            {showCsvTable && !processingBatch && (
-              <div className="space-y-6">
-                {/* From Number and Agent ID */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      From Number <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="fromNumber"
-                      value={formData.fromNumber}
-                      onChange={handleChange}
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                      placeholder="+1234567890 (include country code)"
-                      required
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Must be a number you own in Retell with country code (E.164 format)
-                    </p>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Agent Outbound <span className="text-red-500">*</span>
-                    </label>
-                    {getOutboundAgentIds().length > 1 ? (
-                      <select
-                        name="agentId"
-                        value={formData.agentId}
-                        onChange={handleChange}
-                        className="w-full p-2 border border-gray-300 rounded-md"
-                        required
-                      >
-                        {getOutboundAgentIds().map((agentId: string) => {
-                          const agentName = agentNames[agentId];
-                          let displayName = "Outbound Agent";
-
-                          if (agentName && agentName.toLowerCase().includes('outbound')) {
-                            displayName = "Outbound Agent";
-                          }
-
-                          return (
-                            <option key={agentId} value={agentId}>
-                              {displayName}
-                            </option>
-                          );
-                        })}
-                      </select>
-                    ) : (
-                      <input
-                        type="text"
-                        name="agentId"
-                        value={formData.agentId}
-                        onChange={handleChange}
-                        className="w-full p-2 border border-gray-300 rounded-md bg-gray-50"
-                        required
-                        readOnly
-                      />
-                    )}
-                    <p className="text-xs text-gray-500 mt-1">
-                      Outbound agents only for batch calls
-                    </p>
-                  </div>
-                </div>
-                
-                {/* Delay Between Calls */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Delay Between Calls (minutes) <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    name="delayMinutes"
-                    value={formData.delayMinutes}
-                    onChange={handleChange}
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                  >
-                    <option value="1">1 minute</option>
-                    <option value="5">5 minutes</option>
-                    <option value="10">10 minutes</option>
-                    <option value="15">15 minutes</option>
-                    <option value="30">30 minutes</option>
-                    <option value="60">1 hour</option>
-                  </select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Time to wait between each call to avoid rate limiting
-                  </p>
-                </div>
-                
-                {/* CSV Upload */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Upload CSV File
-                  </label>
-                  <div className="flex items-center">
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      accept=".csv"
-                      onChange={handleFileChange}
-                      className="block w-full text-sm text-gray-500
-                           file:mr-4 file:py-2 file:px-4
-                           file:rounded-md file:border-0
-                           file:text-sm file:font-medium
-                           file:bg-blue-50 file:text-blue-700
-                           hover:file:bg-blue-100"
-                    />
-                  </div>
-                  
-                  <div className="mt-2 p-3 bg-yellow-50 border border-yellow-100 rounded-md text-sm text-yellow-800">
-                    <p className="font-medium">CSV Format Requirements:</p>
-                    <ul className="list-disc pl-5 mt-1">
-                      <li>Must include a column containing phone numbers (in any format)</li>
-                      <li>Optional: Include a column with customer names</li>
-                      <li>Any other columns will be passed as metadata to the agent</li>
-                    </ul>
-                  </div>
-                  
-                  <div className="flex items-center mt-2">
-                    <input
-                      type="checkbox"
-                      id="hasHeaders"
-                      checked={hasHeaders}
-                      onChange={(e) => setHasHeaders(e.target.checked)}
-                      className="mr-2"
-                    />
-                    <label htmlFor="hasHeaders" className="text-sm text-gray-700">
-                      First row contains headers
-                    </label>
-                  </div>
-                </div>
-                
-                {/* CSV Data Preview */}
-                {csvData.length > 0 && (
-                  <div className="mt-4">
-                    <h3 className="text-md font-medium mb-2">Preview ({csvData.length} contacts)</h3>
-                    <div className="overflow-auto max-h-80 border border-gray-200 rounded-md">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Phone Number
-                            </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Customer Name
-                            </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Metadata Fields
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {csvData.slice(0, 5).map((row, index) => (
-                            <tr key={index}>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
-                                {row.phoneNumber}
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
-                                {row.customerName || '-'}
-                              </td>
-                              <td className="px-4 py-2 text-sm text-gray-500">
-                                {row.metadata ? (
-                                  <div className="space-y-1">
-                                    {Object.entries(row.metadata).map(([key, value], i) => (
-                                      <div key={i} className="flex">
-                                        <span className="font-medium mr-2">{key}:</span>
-                                        <span>{value}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  'No additional fields'
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      {csvData.length > 5 && (
-                        <div className="text-center p-2 text-sm text-gray-500 border-t">
-                          {csvData.length - 5} more records not shown
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex justify-end mt-4 space-x-3">
-                      <button
-                        type="button"
-                        onClick={cancelCSVImport}
-                        className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={processCsvBatch}
-                        className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                      >
-                        Process {csvData.length} Calls
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
-            )}
-          </div>
-        </div>
-        </div>
+
+              <Button 
+                onClick={handleSingleCall} 
+                disabled={isLoading}
+                className="w-full"
+              >
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Creating Call...
+                  </>
+                ) : (
+                  <>
+                    <Play className="mr-2 h-4 w-4" />
+                    Create Call
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Batch Calls Tab */}
+        {activeTab === 'batch' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <PhoneCall className="h-5 w-5" />
+                  Batch Calls ({batchCalls.length})
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={addBatchCall}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Call
+                  </Button>
+                  {batchCalls.length > 0 && (
+                    <Button onClick={handleBatchCalls} disabled={isLoading}>
+                      {isLoading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <Play className="mr-2 h-4 w-4" />
+                          Create All Calls
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {batchCalls.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <PhoneCall className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>No calls added yet</p>
+                  <Button variant="outline" onClick={addBatchCall} className="mt-2">
+                    Add First Call
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {batchCalls.map((call, index) => (
+                    <div key={index} className="p-4 border rounded-lg space-y-3">
+                      <div className="flex justify-between items-center">
+                        <Badge variant="outline">Call {index + 1}</Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeBatchCall(index)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label>From Number</Label>
+                          <Input
+                            value={call.from_number}
+                            onChange={(e) => updateBatchCall(index, 'from_number', e.target.value)}
+                            placeholder="+1234567890"
+                          />
+                        </div>
+                        <div>
+                          <Label>To Number</Label>
+                          <Input
+                            value={call.to_number}
+                            onChange={(e) => updateBatchCall(index, 'to_number', e.target.value)}
+                            placeholder="+0987654321"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label>Agent</Label>
+                          <Select 
+                            value={call.agent_id} 
+                            onValueChange={(value) => updateBatchCall(index, 'agent_id', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select an agent" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {agents.map((agent) => (
+                                <SelectItem key={agent.agent_id} value={agent.agent_id}>
+                                  {agent.agent_name || agent.agent_id}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label>Customer Name</Label>
+                          <Input
+                            value={call.customer_name}
+                            onChange={(e) => updateBatchCall(index, 'customer_name', e.target.value)}
+                            placeholder="John Doe"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* CSV Import Tab */}
+        {activeTab === 'csv' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Upload className="h-5 w-5" />
+                  CSV Import
+                </div>
+                <Button variant="outline" onClick={downloadCsvTemplate}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Download Template
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="csvData">CSV Data</Label>
+                <Textarea
+                  id="csvData"
+                  value={csvData}
+                  onChange={(e) => setCsvData(e.target.value)}
+                  placeholder="from_number,to_number,agent_id,customer_name
++1234567890,+0987654321,agent_123,John Doe
++1234567891,+0987654322,agent_123,Jane Smith"
+                  rows={10}
+                  className="font-mono text-sm"
+                />
+              </div>
+              
+              <div className="text-sm text-muted-foreground">
+                <p><strong>Required columns:</strong> from_number, to_number, agent_id</p>
+                <p><strong>Optional columns:</strong> customer_name, any custom metadata</p>
+              </div>
+
+              <Button onClick={processCsvData} className="w-full">
+                <Upload className="mr-2 h-4 w-4" />
+                Process CSV Data
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Available Agents */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Available Agents</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {agents.length > 0 ? (
+                agents.map((agent) => (
+                  <div key={agent.agent_id} className="p-3 border rounded-lg">
+                    <div className="font-medium">{agent.agent_name || 'Unnamed Agent'}</div>
+                    <div className="text-sm text-muted-foreground">
+                      ID: {agent.agent_id}
+                    </div>
+                    {agent.voice_id && (
+                      <div className="text-xs text-muted-foreground">
+                        Voice: {agent.voice_id}
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-full text-center py-4 text-muted-foreground">
+                  No agents available
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </AuthenticatedLayout>
-  );
+  )
 }
