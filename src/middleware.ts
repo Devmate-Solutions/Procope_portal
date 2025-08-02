@@ -16,7 +16,21 @@ export async function middleware(request: NextRequest) {
   }
 
   // Define protected routes
-  const protectedRoutes = ['/dashboard', '/analytics', '/create-calls', '/call-history', '/agents', '/settings']
+  const protectedRoutes = [
+    '/dashboard', 
+    '/analytics', 
+    '/create-calls', 
+    '/call-history', 
+    '/agents', 
+    '/settings',
+    '/scribe',
+    '/scribe-history',
+    '/claims-archive',
+    '/user-management',
+    '/add-user',
+    '/pdf-extractor',
+    '/template-1'
+  ]
   const loginPath = '/login'
 
   // If trying to access a protected route without authentication
@@ -56,6 +70,13 @@ export const config = {
     '/create-calls',
     '/call-history',
     '/agents',
-    '/settings'
+    '/settings',
+    '/scribe',
+    '/scribe-history',
+    '/claims-archive',
+    '/user-management',
+    '/add-user',
+    '/pdf-extractor',
+    '/template-1'
   ]
 }

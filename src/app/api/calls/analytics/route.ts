@@ -1,102 +1,49 @@
 import { type NextRequest, NextResponse } from "next/server"
-
-const RETELL_API_KEY = "key_f1b00b4ebfbda2cfe8ffb6a357b2"
+import { getAnalytics } from "@/lib/aws-api"
 
 export async function GET(request: NextRequest) {
   try {
-    if (!RETELL_API_KEY) {
-     
-      
-      return NextResponse.json(
-        {
-          error: "API key not configured - Please set RETELL_API_KEY environment variable",
-          totalCalls: 0,
-          averageDuration: "00:00",
-          averageLatency: "0ms",
-          chartData: [],
-          agents: [],
-          rawCalls: [],
-          apiStatus: "error",
-        },
-        { status: 500 },
-      )
-    }
-
-    // Update how we get date parameters from the request
+    // Get query parameters
     const { searchParams } = new URL(request.url)
-    const fromTimestamp = searchParams.get("from_timestamp")
-    const toTimestamp = searchParams.get("to_timestamp")
-    const startDate = searchParams.get("start_date")
-    const endDate = searchParams.get("end_date")
-    const agentId = searchParams.get("agent_id") || "agent_a3f5d1a7dd6d0abe1ded29a1fc" // Default to specific agent
-
+    const filters: any = {}
     
-   
-    
-
-    // Build filter criteria - with optional agent_id
-    const filterCriteria: any = {
-      agent_id: [agentId], // Always include agent_id
+    // Extract filters from query parameters
+    for (const [key, value] of searchParams.entries()) {
+      filters[key] = value
     }
 
-    // Add date filters if provided - prioritize timestamp format as that's what the Retell API expects
-    if (fromTimestamp && toTimestamp) {
-      filterCriteria.start_timestamp_after = Number.parseInt(fromTimestamp)
-      filterCriteria.start_timestamp_before = Number.parseInt(toTimestamp)
-    } else if (startDate && endDate) {
-      filterCriteria.start_timestamp_after = new Date(startDate).getTime()
-      filterCriteria.start_timestamp_before = new Date(endDate).getTime()
+    // Call the AWS API
+    const data = await getAnalytics(filters)
+    
+    // If the AWS API returns raw calls data, process it
+    if (data.calls || Array.isArray(data)) {
+      const calls = Array.isArray(data) ? data : data.calls || []
+      const startDate = searchParams.get("start_date")
+      const endDate = searchParams.get("end_date")
+      const agentId = searchParams.get("agent_id")
+      
+      // Extract unique agent IDs
+      const agentIds: string[] = agentId
+        ? [agentId]
+        : ([...new Set(calls.map((call: any) => call.agent_id).filter(Boolean))] as string[])
+      
+      // Process the data
+      const processedData = processRealApiData(calls, startDate, endDate, agentIds)
+      return NextResponse.json({
+        ...processedData,
+        selectedAgentId: agentId || "all",
+      })
     }
-
-    const response = await fetch("https://api.retellai.com/v2/list-calls", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${RETELL_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        filter_criteria: filterCriteria,
-        sort_order: "descending",
-        limit: 1000,
-      }),
-    })
-
-  
     
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      
-      
-      throw new Error(`API request failed: ${response.status}`)
-    }
-
-    const data = await response.json()
-    const calls = Array.isArray(data) ? data : data.calls || []
-
-    
-
-    // Extract unique agent IDs
-    const agentIds: string[] = agentId
-      ? [agentId]
-      : ([...new Set(calls.map((call: any) => call.agent_id).filter(Boolean))] as string[])
-
-    
-      
-
-    // Process real API data
-    const processedData = processRealApiData(calls, startDate, endDate, agentIds)
-    return NextResponse.json({
-      ...processedData,
-      selectedAgentId: agentId || "all",
-    })
-  } catch (error) {
-  
+    // Return data as-is if already processed
+    return NextResponse.json(data)
+  } catch (error: any) {
+    console.error('Failed to fetch analytics:', error)
     
     // Return error response
     return NextResponse.json(
       {
-        error: "Failed to fetch data from Retell AI API",
+        error: error.message || "Failed to fetch analytics data",
         totalCalls: 0,
         averageDuration: "00:00",
         averageLatency: "0ms",

@@ -18,7 +18,7 @@ import { DisconnectionReasonChart } from "./disconnection-reason-chart"
 import { MetricCard } from "./metric-card"
 import { UserSentimentChart } from "./user-sentiment-chart"
 import { CustomChart } from "./custom-chart"
-import { getAnalytics, getCurrentUser, getUserAgentIds, getAgents } from '@/lib/azure-api'
+import { getAnalytics, getUserAgentIds, getPhoneNumbers } from '@/lib/aws-api'
 import { getCurrentUser as getAuthUser } from '@/lib/auth'
 import { LocalStorage } from "@azure/msal-browser"
 
@@ -32,6 +32,10 @@ interface AnalyticsData {
   rawCalls: any[]
   apiStatus?: string
   selectedAgentId?: string
+  disconnectionData?: any
+  callAnalytics?: any
+  directionData?: any
+  callSuccessData?: any
 }
 
 interface CustomChart {
@@ -104,35 +108,19 @@ export function Analytics() {
     return `Agent: ${agentId.substring(0, 8)}...`;
   }
 
-  // Fetch agent names directly from API (same logic as create calls)
+  // Fetch agent names from AWS API
   const fetchAgentNames = async () => {
     try {
-      // Get bearer token from localstorage
-      const token = localStorage.getItem("auth_token");
-    
-      console.log(token);
-      // Call API directly
-      const response = await fetch('https://func-retell425.azurewebsites.net/api/retell/phone-number', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`API call failed: ${response.status}`);
-      }
-
-      const phoneNumbersData = await response.json();
+      console.log('🔄 Fetching phone numbers from AWS API...');
+      const phoneNumbersData = await getPhoneNumbers();
       const nameMap: Record<string, string> = {};
       const availableAgentIds: string[] = [];
-      console.log("AGENTS from API:", phoneNumbersData);
+      console.log("AGENTS from AWS API:", phoneNumbersData);
 
       if (Array.isArray(phoneNumbersData)) {
         setPhoneNumbers(phoneNumbersData);
         
-        // Process all agents from all phone numbers (same as create calls)
+        // Process all agents from all phone numbers
         phoneNumbersData.forEach((phoneData: any) => {
           // Add inbound agent if exists
           if (phoneData.inbound_agent_id) {
@@ -156,7 +144,7 @@ export function Analytics() {
 
         console.log('📋 Agent names loaded:', nameMap);
         console.log('📞 Phone numbers loaded:', phoneNumbersData);
-        console.log('🤖 Available agents from API:', availableAgentIds);
+        console.log('🤖 Available agents from AWS API:', availableAgentIds);
       }
 
       setAgentNames(nameMap);

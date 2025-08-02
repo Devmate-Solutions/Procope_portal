@@ -13,7 +13,7 @@ import {
   PaginationState,
 } from '@tanstack/react-table';
 import { FaChevronLeft, FaChevronRight, FaCalendarAlt } from 'react-icons/fa';
-import { getCalls, getAgents } from '@/lib/azure-api';
+import { getCalls, getPhoneNumbers } from '@/lib/aws-api';
 import { getCurrentUser } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import AuthenticatedLayout from '../components/AuthenticatedLayout';
@@ -128,7 +128,7 @@ const CallHistoryPage = () => {
   // Fetch agent names from phone numbers endpoint
   const fetchAgentNames = async () => {
     try {
-      const phoneNumbers = await getAgents();
+      const phoneNumbers = await getPhoneNumbers();
       const nameMap: Record<string, string> = {};
 
       if (Array.isArray(phoneNumbers)) {

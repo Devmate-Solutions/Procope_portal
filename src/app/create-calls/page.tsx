@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { createCall, createBatchCalls, getAgents } from '@/lib/azure-api';
+import { createCall, createBatchCalls, getPhoneNumbers } from '@/lib/aws-api';
 import { getCurrentUser } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import AuthenticatedLayout from '../components/AuthenticatedLayout';
@@ -41,7 +41,7 @@ export default function CreateCallsPage() {
   // Fetch agent names from phone numbers endpoint
   const fetchAgentNames = async () => {
     try {
-      const phoneNumbersData = await getAgents();
+      const phoneNumbersData = await getPhoneNumbers();
       const nameMap: Record<string, string> = {};
       const availableAgentIds: string[] = [];
 

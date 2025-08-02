@@ -1,5 +1,5 @@
-// Azure Functions API base URL
-const AZURE_API_BASE = 'https://func-retell425.azurewebsites.net/api';
+// AWS API Gateway base URL
+const AWS_API_BASE = 'https://u7zoq3e0ek.execute-api.us-east-1.amazonaws.com/prod';
 
 // User profile interface based on JWT payload
 export interface UserProfile {
@@ -8,7 +8,9 @@ export interface UserProfile {
   workspaceId: string;
   workspaceName: string;
   agentIds: string[];
-  role: 'owner' | 'admin' | 'subadmin';
+  role: 'owner' | 'admin' | 'subadmin' | 'manager' | 'user';
+  allowedPages: string[];
+  userId?: string;
   timestamp: number;
   iat: number;
   exp: number;
@@ -16,14 +18,24 @@ export interface UserProfile {
   iss: string;
 }
 
-// Decode JWT token without verification (frontend only)
+// Decode token - handles both JWT and Base64-encoded JSON formats
 export function decodeToken(token: string): UserProfile | null {
   try {
-    if (!token || token.split('.').length !== 3) {
+    if (!token) {
+      console.log("Token is missing");
       return null;
     }
 
-    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+    let payload: any;
+
+    // Check if it's a JWT token (has 3 parts separated by dots)
+    if (token.includes('.') && token.split('.').length === 3) {
+      // JWT format - decode the payload part
+      payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+    } else {
+      // Base64-encoded JSON format (AWS system)
+      payload = JSON.parse(Buffer.from(token, 'base64').toString());
+    }
 
     // Check if token is expired
     const currentTime = Math.floor(Date.now() / 1000);
@@ -92,11 +104,11 @@ export function getCurrentUser(): UserProfile | null {
   return user;
 }
 
-// Login function - calls Azure Function
+// Login function - calls AWS API Gateway
 export async function login(email: string, password: string): Promise<{ success: boolean; token?: string; error?: string }> {
   try {
-    console.log('🌐 Making login request to:', `${AZURE_API_BASE}/auth/login`);
-    const response = await fetch(`${AZURE_API_BASE}/auth/login`, {
+    console.log('🌐 Making login request to:', `${AWS_API_BASE}/auth/login`);
+    const response = await fetch(`${AWS_API_BASE}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

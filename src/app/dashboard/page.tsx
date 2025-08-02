@@ -15,7 +15,7 @@ import {
   FaNotesMedical
 } from 'react-icons/fa';
 import { getCurrentUser, UserProfile } from '@/lib/auth';
-import { getDashboardData } from '@/lib/azure-api';
+import { getDashboardData } from '@/lib/aws-api';
 import AuthenticatedLayout from '../components/AuthenticatedLayout';
 import Link from 'next/link';
 
