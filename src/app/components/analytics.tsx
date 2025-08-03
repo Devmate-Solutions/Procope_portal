@@ -1,6 +1,4 @@
 "use client"
-// Add router to the component
-
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
@@ -18,9 +16,8 @@ import { DisconnectionReasonChart } from "./disconnection-reason-chart"
 import { MetricCard } from "./metric-card"
 import { UserSentimentChart } from "./user-sentiment-chart"
 import { CustomChart } from "./custom-chart"
-import { getAnalytics, getUserAgentIds, getPhoneNumbers } from '@/lib/aws-api'
+import { getAnalytics, getResourceData } from '@/lib/aws-api'
 import { getCurrentUser as getAuthUser } from '@/lib/auth'
-import { LocalStorage } from "@azure/msal-browser"
 
 
 interface AnalyticsData {
@@ -108,29 +105,32 @@ export function Analytics() {
     return `Agent: ${agentId.substring(0, 8)}...`;
   }
 
-  // Fetch agent names from AWS API
+  // Fetch agent names from AWS API using new resource endpoint
   const fetchAgentNames = async () => {
     try {
-      console.log('🔄 Fetching phone numbers from AWS API...');
-      const phoneNumbersData = await getPhoneNumbers();
+      console.log('🔄 Fetching resource data from AWS API...');
+      const resourceData = await getResourceData();
       const nameMap: Record<string, string> = {};
       const availableAgentIds: string[] = [];
-      console.log("AGENTS from AWS API:", phoneNumbersData);
+      console.log("Resource data from AWS API:", resourceData);
 
-      if (Array.isArray(phoneNumbersData)) {
-        setPhoneNumbers(phoneNumbersData);
-        
-        // Process all agents from all phone numbers
-        phoneNumbersData.forEach((phoneData: any) => {
-          // Add inbound agent if exists
-          if (phoneData.inbound_agent_id) {
-            nameMap[phoneData.inbound_agent_id] = `Inbound Agent (${phoneData.phone_number_pretty})`;
-            availableAgentIds.push(phoneData.inbound_agent_id);
-          }
-          // Add outbound agent if exists
-          if (phoneData.outbound_agent_id) {
-            nameMap[phoneData.outbound_agent_id] = `Outbound Agent (${phoneData.phone_number_pretty})`;
-            availableAgentIds.push(phoneData.outbound_agent_id);
+      if (resourceData.success && resourceData.data && Array.isArray(resourceData.data)) {
+        // Process each user's agents from resource data
+        resourceData.data.forEach((userData: any) => {
+          if (userData.agents) {
+            const { inbound, outbound, phoneNumber } = userData.agents;
+            
+            // Add inbound agent if available
+            if (inbound) {
+              nameMap[inbound] = `Inbound Agent - ${phoneNumber || 'No Phone'}`;
+              availableAgentIds.push(inbound);
+            }
+            
+            // Add outbound agent if available
+            if (outbound) {
+              nameMap[outbound] = `Outbound Agent - ${phoneNumber || 'No Phone'}`;
+              availableAgentIds.push(outbound);
+            }
           }
         });
 
@@ -143,7 +143,6 @@ export function Analytics() {
         }
 
         console.log('📋 Agent names loaded:', nameMap);
-        console.log('📞 Phone numbers loaded:', phoneNumbersData);
         console.log('🤖 Available agents from AWS API:', availableAgentIds);
       }
 
@@ -208,12 +207,19 @@ export function Analytics() {
 
       // Add date range parameters if selected
       if (selectedDateRange?.from && selectedDateRange?.to) {
-        // Convert to timestamp format for Azure API
-        const fromTimestamp = selectedDateRange.from.getTime()
-        const toTimestamp = selectedDateRange.to.getTime() + (24 * 60 * 60 * 1000 - 1)
+        // Convert to Unix timestamp format (seconds) for AWS API
+        const fromTimestamp = Math.floor(selectedDateRange.from.getTime() / 1000)
+        const toTimestamp = Math.floor((selectedDateRange.to.getTime() + (24 * 60 * 60 * 1000 - 1)) / 1000)
 
-        filters.start_timestamp_after = fromTimestamp.toString()
-        filters.start_timestamp_before = toTimestamp.toString()
+        filters.start_timestamp_after = fromTimestamp
+        filters.start_timestamp_before = toTimestamp
+        
+        console.log('📅 Date range filters:', {
+          from: selectedDateRange.from.toISOString(),
+          to: selectedDateRange.to.toISOString(),
+          fromTimestamp,
+          toTimestamp
+        });
       }
 
       // Add agent_id parameter - Azure API will filter by user's accessible agents

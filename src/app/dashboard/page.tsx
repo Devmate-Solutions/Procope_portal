@@ -1,328 +1,400 @@
-"use client"
+'use client';
 
-import { useEffect, useState } from 'react'
-import { AuthenticatedLayout } from '@/app/components/AuthenticatedLayout'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Phone, Users, BarChart3, Clock, TrendingUp, Activity } from 'lucide-react'
-import { getDashboardData, getCalls, getAnalytics } from '@/lib/aws-api'
-import { getCurrentUser } from '@/lib/auth'
-
-interface DashboardStats {
-  totalCalls: number
-  totalAgents: number
-  averageDuration: string
-  successRate: number
-  recentCalls: any[]
-  agents: any[]
-}
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  PhoneCall,
+  BarChart3,
+  History,
+  Users,
+  Clock,
+  TrendingUp,
+  Headphones,
+  NotepadText,
+  UserPlus,
+  FileText
+} from 'lucide-react';
+import { getCurrentUser, hasPageAccess, type UserProfile } from '@/lib/auth';
+import { getDashboardData, getCalls, getAnalytics } from '@/lib/aws-api';
+import { AuthenticatedLayout } from '@/app/components/AuthenticatedLayout';
+import Link from 'next/link';
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats>({
-    totalCalls: 0,
-    totalAgents: 0,
-    averageDuration: '0:00',
-    successRate: 0,
-    recentCalls: [],
-    agents: []
-  })
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const router = useRouter();
 
   useEffect(() => {
-    loadDashboardData()
-  }, [])
+    const initializeDashboard = async () => {
+      try {
+        // Get current user
+        const currentUser = getCurrentUser();
+        if (!currentUser) {
+          router.push('/login');
+          return;
+        }
 
-  const loadDashboardData = async () => {
-    try {
-      setIsLoading(true)
-      setError(null)
+        setUser(currentUser);
 
-      const user = getCurrentUser()
-      if (!user) {
-        throw new Error('User not authenticated')
-      }
+        // Try to fetch dashboard data, but don't fail if it doesn't work
+        try {
+          const [dashboardResult, recentCallsResult, analyticsResult] = await Promise.allSettled([
+            getDashboardData(),
+            getCalls({ limit: 10 }),
+            getAnalytics()
+          ]);
 
-      console.log('Loading dashboard data...')
+          let dashboard: any = {
+            agents: [],
+            permissions: {},
+            stats: { totalAgents: 0, accessibleAgents: 0, workspaceRole: 'user' }
+          };
+          let recentCalls: any[] = [];
+          let analytics: any = {
+            callCount: 0,
+            callDuration: { totalDuration: 0, formattedDuration: '0m' },
+            callSuccessData: { successful: 0, unsuccessful: 0, unknown: 0 }
+          };
 
-      // Get dashboard data and recent calls with error handling
-      const [dashboardResult, recentCallsResult, analyticsResult] = await Promise.allSettled([
-        getDashboardData(),
-        getCalls({ limit: 10 }),
-        getAnalytics()
-      ])
-
-      let dashboard: any = {
-        agents: [],
-        permissions: {},
-        stats: { totalAgents: 0, accessibleAgents: 0, workspaceRole: 'user' }
-      }
-      let recentCalls: any[] = []
-      let analytics: any = {
-        callCount: 0,
-        callDuration: { totalDuration: 0, formattedDuration: '0:00' },
-        callSuccessData: { successful: 0, unsuccessful: 0, unknown: 0 }
-      }
-
-      if (dashboardResult.status === 'fulfilled') {
-        dashboard = dashboardResult.value
-      } else {
-        console.warn('Dashboard data failed:', dashboardResult.reason)
-      }
-
-      if (recentCallsResult.status === 'fulfilled') {
-        recentCalls = Array.isArray(recentCallsResult.value) ? recentCallsResult.value : []
-      } else {
-        console.warn('Recent calls failed:', recentCallsResult.reason)
-      }
-
-      if (analyticsResult.status === 'fulfilled') {
-        analytics = analyticsResult.value
-      } else {
-        console.warn('Analytics failed:', analyticsResult.reason)
-      }
-
-      // Calculate stats with fallbacks
-      const totalCalls = analytics.callCount || recentCalls.length || 0
-      const agents = dashboard.agents || user.agentIds?.map((id: string, index: number) => ({
-        id,
-        name: `Agent ${index + 1}`,
-        status: 'active'
-      })) || []
-
-      // Calculate success rate from analytics or recent calls
-      let successRate = 0
-      if (analytics.callSuccessData) {
-        const { successful = 0, unsuccessful = 0, unknown = 0 } = analytics.callSuccessData
-        const total = successful + unsuccessful + unknown
-        successRate = total > 0 ? Math.round((successful / total) * 100) : 0
-      } else if (recentCalls.length > 0) {
-        const successfulCalls = recentCalls.filter(call => {
-          if (call.call_analysis?.call_successful !== undefined) {
-            return call.call_analysis.call_successful
+          if (dashboardResult.status === 'fulfilled') {
+            dashboard = dashboardResult.value;
           }
-          return call.call_status === 'ended' && 
-                 ['user_hangup', 'agent_hangup', 'call_transfer'].includes(call.disconnection_reason)
-        }).length
-        successRate = Math.round((successfulCalls / recentCalls.length) * 100)
+
+          if (recentCallsResult.status === 'fulfilled') {
+            recentCalls = Array.isArray(recentCallsResult.value) ? recentCallsResult.value : [];
+          }
+
+          if (analyticsResult.status === 'fulfilled') {
+            analytics = analyticsResult.value;
+          }
+
+          // Create combined dashboard data
+          setDashboardData({
+            totalCalls: analytics.callCount || recentCalls.length || 0,
+            successRate: analytics.callSuccessData ? 
+              (() => {
+                const { successful = 0, unsuccessful = 0, unknown = 0 } = analytics.callSuccessData;
+                const total = successful + unsuccessful + unknown;
+                return total > 0 ? `${Math.round((successful / total) * 100)}%` : '0%';
+              })() : '0%',
+            avgDuration: analytics.callDuration?.formattedDuration || '0m',
+            recentCalls: recentCalls.slice(0, 5),
+            agents: dashboard.agents || []
+          });
+        } catch (apiError) {
+          console.warn('Dashboard API call failed, using fallback data:', apiError);
+          // Create fallback dashboard data from user token
+          setDashboardData({
+            totalCalls: 0,
+            successRate: '0%',
+            avgDuration: '0m',
+            recentCalls: [],
+            agents: []
+          });
+        }
+      } catch (error) {
+        console.error('Dashboard initialization error:', error);
+        setError('Failed to load dashboard data');
+      } finally {
+        setIsLoading(false);
       }
+    };
 
-      setStats({
-        totalCalls,
-        totalAgents: agents.length,
-        averageDuration: analytics.callDuration?.formattedDuration || '0:00',
-        successRate,
-        recentCalls: recentCalls.slice(0, 5), // Show only 5 recent calls
-        agents
-      })
-
-    } catch (error) {
-      console.error('Failed to load dashboard data:', error)
-      setError('Some dashboard data may be unavailable. Please check your connection.')
-      
-      // Set minimal fallback data
-      const user = getCurrentUser()
-      if (user) {
-        setStats({
-          totalCalls: 0,
-          totalAgents: user.agentIds?.length || 0,
-          averageDuration: '0:00',
-          successRate: 0,
-          recentCalls: [],
-          agents: user.agentIds?.map((id: string, index: number) => ({
-            id,
-            name: `Agent ${index + 1}`,
-            status: 'active'
-          })) || []
-        })
-      }
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const formatDuration = (durationMs: number): string => {
-    if (!durationMs) return '0:00'
-    const minutes = Math.floor(durationMs / 60000)
-    const seconds = Math.floor((durationMs % 60000) / 1000)
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`
-  }
-
-  const formatTimestamp = (timestamp: number): string => {
-    if (!timestamp) return 'Unknown'
-    return new Date(timestamp).toLocaleString()
-  }
+    initializeDashboard();
+  }, [router]);
 
   if (isLoading) {
     return (
       <AuthenticatedLayout requiredPage="dashboard">
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1F4280] mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading dashboard...</p>
+          </div>
         </div>
       </AuthenticatedLayout>
-    )
+    );
+  }
+
+  if (error) {
+    return (
+      <AuthenticatedLayout requiredPage="dashboard">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <Card className="w-full max-w-md">
+            <CardContent className="p-6 text-center">
+              <p className="text-red-600 mb-4">{error}</p>
+              <Button
+                onClick={() => window.location.reload()}
+                variant="default"
+                size="default"
+                className="bg-[#1F4280] hover:bg-[#1F4280]/90"
+              >
+                Retry
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </AuthenticatedLayout>
+    );
   }
 
   return (
     <AuthenticatedLayout requiredPage="dashboard">
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">
-            Overview of your call center performance
-          </p>
-        </div>
+      <div className="min-h-screen bg-gray-50">
+        {/* Main Content */}
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Welcome Section */}
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">
+              Welcome back, {user?.displayName?.split(' ')[0] || user?.email?.split('@')[0] || 'User'}!
+            </h2>
+            <p className="text-gray-600">
+              Manage your voice agents and analyze call performance from your workspace.
+            </p>
+          </div>
 
-        {error && (
-          <Card className="border-yellow-200 bg-yellow-50">
-            <CardContent className="pt-6">
-              <p className="text-yellow-600">{error}</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Calls</CardTitle>
-              <Phone className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalCalls}</div>
-              <p className="text-xs text-muted-foreground">
-                All time calls
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Agents</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalAgents}</div>
-              <p className="text-xs text-muted-foreground">
-                Available agents
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg Duration</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.averageDuration}</div>
-              <p className="text-xs text-muted-foreground">
-                Per call average
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.successRate}%</div>
-              <p className="text-xs text-muted-foreground">
-                Call completion rate
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Recent Calls */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5" />
-                Recent Calls
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {stats.recentCalls.length > 0 ? (
-                  stats.recentCalls.map((call, index) => (
-                    <div key={call.call_id || index} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <Badge variant={call.call_status === 'ended' ? 'default' : 'secondary'}>
-                            {call.call_status || 'Unknown'}
-                          </Badge>
-                          <span className="text-sm text-muted-foreground">
-                            {call.direction || 'outbound'}
-                          </span>
-                        </div>
-                        <div className="text-sm">
-                          {call.from_number} → {call.to_number}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {formatTimestamp(call.start_timestamp)}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-medium">
-                          {formatDuration(call.duration_ms)}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          Agent: {call.agent_id?.slice(-6) || 'Unknown'}
-                        </div>
-                      </div>
+          {/* Quick Stats */}
+          {dashboardData && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center">
+                    <PhoneCall className="h-8 w-8 text-[#1F4280]" />
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-600">Total Calls</p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {dashboardData.totalCalls || 0}
+                      </p>
                     </div>
-                  ))
-                ) :(
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Phone className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>No recent calls found</p>
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
 
-          {/* Agents Status */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Agents
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {stats.agents.length > 0 ? (
-                  stats.agents.map((agent, index) => (
-                    <div key={agent.id || index} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="space-y-1">
-                        <div className="font-medium">
-                          {agent.name || `Agent ${index + 1}`}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          ID: {agent.id?.slice(-8) || 'Unknown'}
-                        </div>
-                      </div>
-                      <Badge variant={agent.status === 'active' ? 'default' : 'secondary'}>
-                        {agent.status || 'active'}
-                      </Badge>
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center">
+                    <Headphones className="h-8 w-8 text-green-600" />
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-600">Active Agents</p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {user?.agentIds?.length || dashboardData.agents?.length || 0}
+                      </p>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>No agents configured</p>
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center">
+                    <BarChart3 className="h-8 w-8 text-blue-600" />
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-600">Success Rate</p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {dashboardData.successRate || '0%'}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center">
+                    <Clock className="h-8 w-8 text-purple-600" />
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-600">Avg Duration</p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {dashboardData.avgDuration || '0m'}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Navigation Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {hasPageAccess(user, 'analytics') && (
+              <Link href="/analytics">
+                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-3">
+                      <BarChart3 className="h-6 w-6 text-[#1F4280]" />
+                      <span>Analytics</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-600">
+                      View comprehensive call analytics, performance metrics, and insights.
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+            )}
+
+            {hasPageAccess(user, 'create-calls') && (
+              <Link href="/create-calls">
+                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-3">
+                      <PhoneCall className="h-6 w-6 text-green-600" />
+                      <span>Create Calls</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-600">
+                      Initiate outbound calls and manage call campaigns.
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+            )}
+
+            {hasPageAccess(user, 'call-history') && (
+              <Link href="/call-history">
+                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-3">
+                      <History className="h-6 w-6 text-blue-600" />
+                      <span>Call History</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-600">
+                      Browse and search through your complete call history.
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+            )}
+
+            {hasPageAccess(user, 'scribe') && (
+              <Link href="/scribe">
+                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-3">
+                      <NotepadText className="h-6 w-6 text-purple-600" />
+                      <span>Scribe</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-600">
+                      AI-powered transcription and note-taking for calls.
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+            )}
+
+            {hasPageAccess(user, 'scribe-history') && (
+              <Link href="/scribe-history">
+                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-3">
+                      <FileText className="h-6 w-6 text-indigo-600" />
+                      <span>Scribe History</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-600">
+                      View and manage your transcription history.
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+            )}
+
+            {hasPageAccess(user, 'user-management') && (
+              <Link href="/user-management">
+                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-3">
+                      <Users className="h-6 w-6 text-orange-600" />
+                      <span>User Management</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-600">
+                      Manage users, roles, and permissions.
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+            )}
+
+            {hasPageAccess(user, 'add-user') && (
+              <Link href="/add-user">
+                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-3">
+                      <UserPlus className="h-6 w-6 text-teal-600" />
+                      <span>Add User</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-600">
+                      Add new users to the system.
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+            )}
+
+            {hasPageAccess(user, 'claims-archive') && (
+              <Link href="/claims-archive">
+                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-3">
+                      <FileText className="h-6 w-6 text-red-600" />
+                      <span>Claims Archive</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-600">
+                      View and manage archived claims.
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+            )}
+          </div>
+
+          {/* Recent Activity */}
+          {/* {dashboardData?.recentCalls && dashboardData.recentCalls.length > 0 && (
+            <div className="mt-8">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recent Activity</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {dashboardData.recentCalls.map((call: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between py-2 border-b last:border-b-0">
+                        <div>
+                          <p className="font-medium">{call.to_number || 'Unknown'}</p>
+                          <p className="text-sm text-gray-500">
+                            {call.start_timestamp ? new Date(call.start_timestamp).toLocaleString() : 'Unknown time'}
+                          </p>
+                        </div>
+                        <Badge variant={call.call_status === 'ended' ? 'default' : 'secondary'}>
+                          {call.call_status || 'unknown'}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )} */}
+        </main>
       </div>
     </AuthenticatedLayout>
-  )
+  );
 }

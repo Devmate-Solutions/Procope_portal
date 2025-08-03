@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { decodeToken, UserProfile } from '@/lib/auth';
 import React from 'react';
-import AuthenticatedLayout from '../components/AuthenticatedLayout';
+import {AuthenticatedLayout } from '../components/AuthenticatedLayout';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { FaSearch, FaDownload } from 'react-icons/fa';

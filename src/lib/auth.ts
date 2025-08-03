@@ -20,12 +20,19 @@ export interface UserProfile {
 
 // Page access mapping for template-based access
 export const PAGE_ACCESS_TEMPLATES = {
-  template1: ['basic', 'dashboard', 'call-history', 'analytics', 'create-calls', 'user-management'],
-  basic: ['dashboard', 'call-history'],
-  scribe: ['dashboard', 'call-history', 'scribe', 'scribe-history'],
-  claims: ['dashboard', 'call-history', 'claims-archive'],
-  usermanage: ['dashboard', 'call-history', 'user-management', 'add-user']
+  template1: [ 'dashboard', 'call-history', 'analytics', 'create-calls', 'user-management'],
+  basic: ['dashboard', 'call-history',  'create-calls','analytics'],
+  scribe: ['scribe', 'scribe-history'],
+  claims: [ 'call-history', 'claims-archive'],
+  usermanage: ['user-management']
 };
+// export const PAGE_ACCESS_TEMPLATES = {
+//   template1: ['basic', 'dashboard', 'call-history', 'analytics', 'create-calls', 'user-management'],
+//   basic: ['dashboard', 'call-history'],
+//   scribe: ['dashboard', 'call-history', 'scribe', 'scribe-history'],
+//   claims: ['dashboard', 'call-history', 'claims-archive'],
+//   usermanage: ['dashboard', 'call-history', 'user-management', 'add-user']
+// };
 
 // Check if user has access to a specific page
 export function hasPageAccess(user: UserProfile | null, page: string): boolean {

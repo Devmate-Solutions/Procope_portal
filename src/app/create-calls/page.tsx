@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { PhoneCall, Upload, Download, Plus, Trash2, Play } from 'lucide-react'
-import { createCall, createBatchCalls, getAgents } from '@/lib/aws-api'
+import { createCall, createBatchCalls, getAgents, getPhoneNumbers } from '@/lib/aws-api'
 import { getCurrentUser } from '@/lib/auth'
 
 interface CallData {
@@ -23,6 +23,7 @@ interface CallData {
 
 export default function CreateCallsPage() {
   const [agents, setAgents] = useState<any[]>([])
+  const [phoneNumbers, setPhoneNumbers] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -42,18 +43,57 @@ export default function CreateCallsPage() {
   const [activeTab, setActiveTab] = useState<'single' | 'batch' | 'csv'>('single')
 
   const currentUser = getCurrentUser()
+  
+  // Debug logging
+  console.log('🔍 Current user:', currentUser)
+  console.log('🔍 User allowedPages:', currentUser?.allowedPages)
+  
+  // Check if user has template1 access (which should hide single call creation)
+  const isTemplate1User = currentUser?.allowedPages?.includes('template1')
+  
+  console.log('🔍 Is Template1 User:', isTemplate1User)
 
   useEffect(() => {
-    loadAgents()
-  }, [])
+    loadAgentsAndPhoneNumbers()
+    // If template1 user, default to CSV import tab since single call is hidden
+    if (isTemplate1User) {
+      console.log('📝 Setting default tab to CSV for template1 user')
+      setActiveTab('csv')
+    }
+  }, [isTemplate1User])
 
-  const loadAgents = async () => {
+  const loadAgentsAndPhoneNumbers = async () => {
     try {
-      const agentsData = await getAgents()
-      setAgents(Array.isArray(agentsData) ? agentsData : [])
+      // Load agents and phone numbers in parallel
+      const [agentsData, phoneNumbersData] = await Promise.all([
+        getAgents(),
+        getPhoneNumbers()
+      ])
+      
+      // Remove duplicates and ensure unique agents
+      const uniqueAgents = Array.isArray(agentsData) 
+        ? agentsData.filter((agent, index, self) => 
+            index === self.findIndex(a => a.agent_id === agent.agent_id)
+          )
+        : []
+      
+      setAgents(uniqueAgents)
+      setPhoneNumbers(phoneNumbersData || [])
+      
+      // Auto-fill from number if only one phone number available
+      if (phoneNumbersData && phoneNumbersData.length === 1) {
+        setSingleCall(prev => ({ 
+          ...prev, 
+          from_number: phoneNumbersData[0].phoneNumber 
+        }))
+      }
+      
+      console.log('📞 Loaded agents:', uniqueAgents)
+      console.log('📞 Loaded phone numbers:', phoneNumbersData)
+      
     } catch (error) {
-      console.error('Failed to load agents:', error)
-      setError('Failed to load agents')
+      console.error('Failed to load agents and phone numbers:', error)
+      setError('Failed to load agents and phone numbers')
     }
   }
 
@@ -121,10 +161,10 @@ export default function CreateCallsPage() {
       const result = await createBatchCalls(formattedCalls)
       
       if (result.summary) {
-        setSuccess(`Batch completed:${result.summary.successful}/${result.summary.total} calls created successfully`)
+        setSuccess(`Batch completed: ${result.summary.successful}/${result.summary.total} calls created successfully`)
         
         if (result.failed_calls && result.failed_calls.length > 0) {
-          setError(`Some calls failed: ${result.failed_calls.map(f => f.error).join(', ')}`)
+          setError(`Some calls failed: ${result.failed_calls.map((f: any) => f.error).join(', ')}`)
         }
       } else {
         setSuccess('Batch calls created successfully!')
@@ -233,9 +273,21 @@ export default function CreateCallsPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Create Outbound Calls</h1>
           <p className="text-muted-foreground">
-            Create single calls or batch process multiple calls
+            {isTemplate1User ? 'Import CSV files or batch process multiple calls' : 'Create single calls or batch process multiple calls'}
           </p>
         </div>
+
+        {/* Debug info - remove this after testing */}
+        {/* <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="pt-6">
+            <p className="text-blue-600">
+              <strong>Debug Info:</strong><br/>
+              User: {currentUser?.email}<br/>
+              Allowed Pages: {JSON.stringify(currentUser?.allowedPages)}<br/>
+              Is Template1 User: {isTemplate1User ? 'YES' : 'NO'}
+            </p>
+          </CardContent>
+        </Card> */}
 
         {error && (
           <Card className="border-red-200 bg-red-50">
@@ -253,18 +305,20 @@ export default function CreateCallsPage() {
           </Card>
         )}
 
-        {/* Tab Navigation */}
+        {/* Tab Navigation - Hide Single Call tab for template1 users */}
         <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg w-fit">
-          <button
-            onClick={() => setActiveTab('single')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'single' 
-                ? 'bg-white text-gray-900 shadow-sm' 
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Single Call
-          </button>
+          {!isTemplate1User && (
+            <button
+              onClick={() => setActiveTab('single')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'single' 
+                  ? 'bg-white text-gray-900 shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Single Call
+            </button>
+          )}
           <button
             onClick={() => setActiveTab('batch')}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -287,8 +341,8 @@ export default function CreateCallsPage() {
           </button>
         </div>
 
-        {/* Single Call Tab */}
-        {activeTab === 'single' && (
+        {/* Single Call Tab - Hidden for template1 users */}
+        {!isTemplate1User && activeTab === 'single' && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -300,12 +354,30 @@ export default function CreateCallsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="fromNumber">From Number</Label>
-                  <Input
-                    id="fromNumber"
-                    value={singleCall.from_number}
-                    onChange={(e) => setSingleCall({ ...singleCall, from_number: e.target.value })}
-                    placeholder="+1234567890"
-                  />
+                  {phoneNumbers.length > 0 ? (
+                    <Select 
+                      value={singleCall.from_number} 
+                      onValueChange={(value) => setSingleCall({ ...singleCall, from_number: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select phone number" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {phoneNumbers.map((phone, index) => (
+                          <SelectItem key={`phone-${index}`} value={phone.phoneNumber}>
+                            {phone.phoneNumber} {phone.hasInbound && phone.hasOutbound ? '(In/Out)' : phone.hasInbound ? '(Inbound)' : '(Outbound)'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      id="fromNumber"
+                      value={singleCall.from_number}
+                      onChange={(e) => setSingleCall({ ...singleCall, from_number: e.target.value })}
+                      placeholder="+1234567890"
+                    />
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="toNumber">To Number</Label>
@@ -413,7 +485,7 @@ export default function CreateCallsPage() {
               ) : (
                 <div className="space-y-4">
                   {batchCalls.map((call, index) => (
-                    <div key={index} className="p-4 border rounded-lg space-y-3">
+                    <div key={`batch-call-${index}`} className="p-4 border rounded-lg space-y-3">
                       <div className="flex justify-between items-center">
                         <Badge variant="outline">Call {index + 1}</Badge>
                         <Button
@@ -457,7 +529,7 @@ export default function CreateCallsPage() {
                             </SelectTrigger>
                             <SelectContent>
                               {agents.map((agent) => (
-                                <SelectItem key={agent.agent_id} value={agent.agent_id}>
+                                <SelectItem key={`batch-${index}-${agent.agent_id}`} value={agent.agent_id}>
                                   {agent.agent_name || agent.agent_id}
                                 </SelectItem>
                               ))}
@@ -524,6 +596,31 @@ export default function CreateCallsPage() {
           </Card>
         )}
 
+        {/* Available Phone Numbers */}
+        {phoneNumbers.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Available Phone Numbers</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {phoneNumbers.map((phone, index) => (
+                  <div key={`phone-${index}`} className="p-3 border rounded-lg">
+                    <div className="font-medium">{phone.phoneNumber}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {phone.hasInbound && phone.hasOutbound ? 'Inbound & Outbound' : 
+                       phone.hasInbound ? 'Inbound Only' : 'Outbound Only'}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Workspace: {phone.workspaceId}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Available Agents */}
         <Card>
           <CardHeader>
@@ -532,15 +629,20 @@ export default function CreateCallsPage() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {agents.length > 0 ? (
-                agents.map((agent) => (
-                  <div key={agent.agent_id} className="p-3 border rounded-lg">
+                agents.map((agent, index) => (
+                  <div key={`available-agent-${agent.agent_id}-${index}`} className="p-3 border rounded-lg">
                     <div className="font-medium">{agent.agent_name || 'Unnamed Agent'}</div>
                     <div className="text-sm text-muted-foreground">
                       ID: {agent.agent_id}
                     </div>
-                    {agent.voice_id && (
+                    {agent.type && (
                       <div className="text-xs text-muted-foreground">
-                        Voice: {agent.voice_id}
+                        Type: {agent.type}
+                      </div>
+                    )}
+                    {agent.phoneNumber && (
+                      <div className="text-xs text-muted-foreground">
+                        Phone: {agent.phoneNumber}
                       </div>
                     )}
                   </div>

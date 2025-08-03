@@ -45,3 +45,4 @@ next-env.d.ts
 *.zip
 index.html
 retellbackend.js
+/debug_previousui

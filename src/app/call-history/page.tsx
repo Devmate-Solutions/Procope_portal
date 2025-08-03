@@ -13,7 +13,7 @@ import {
   PaginationState,
 } from '@tanstack/react-table';
 import { FaChevronLeft, FaChevronRight, FaCalendarAlt } from 'react-icons/fa';
-import { getCalls, getPhoneNumbers } from '@/lib/aws-api';
+import { getCalls, getNumbers } from '@/lib/aws-api';
 import { getCurrentUser } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import {AuthenticatedLayout } from '../components/AuthenticatedLayout';
@@ -128,7 +128,7 @@ const CallHistoryPage = () => {
   // Fetch agent names from phone numbers endpoint
   const fetchAgentNames = async () => {
     try {
-      const phoneNumbers = await getPhoneNumbers();
+      const phoneNumbers = await getNumbers();
       const nameMap: Record<string, string> = {};
 
       if (Array.isArray(phoneNumbers)) {
@@ -204,7 +204,7 @@ const CallHistoryPage = () => {
     try {
       // Build filters for Azure API - will automatically filter by user's accessible agents
       const filters: any = {
-        limit: 1000,
+        limit: 50,
         sort_order: 'descending',
         // Add date range filters for the current week
         start_timestamp_after: weekDateRange.start.getTime().toString(),

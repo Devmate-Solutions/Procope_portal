@@ -1,5 +1,5 @@
 import AnalyticsClient from "../components/analytics-client"
-import AuthenticatedLayout from "../components/AuthenticatedLayout"
+import { AuthenticatedLayout } from "../components/AuthenticatedLayout"
 
 export default function Dashboard() {
   return (

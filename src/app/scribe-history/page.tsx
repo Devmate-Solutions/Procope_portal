@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { decodeToken, UserProfile } from '@/lib/auth';
-import AuthenticatedLayout from '../components/AuthenticatedLayout';
+import {AuthenticatedLayout} from '../components/AuthenticatedLayout';
 import React from 'react';
 import TranscriptHistory from '../components/AudiosTable';
 
