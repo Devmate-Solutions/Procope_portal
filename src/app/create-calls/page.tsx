@@ -1131,232 +1131,126 @@ Ayaz,Momin,03/20/1983,96896466583,teeth cleaning,care needed on bottom left toot
                   )}
                 </div>
               ) : (
-                <div className="border border-gray-200 rounded-lg shadow-sm bg-white">
-                  {/* Table Container with Custom Scrollbars */}
-                  <div 
-                    className="patient-table-container overflow-auto max-h-[600px]" 
-                    style={{
-                      scrollbarWidth: 'thin',
-                      scrollbarColor: '#CBD5E0 #F7FAFC'
-                    }}
-                  >
-                    <style dangerouslySetInnerHTML={{
-                      __html: `
-                        .patient-table-container::-webkit-scrollbar {
-                          width: 8px;
-                          height: 8px;
-                        }
-                        .patient-table-container::-webkit-scrollbar-track {
-                          background: #f1f5f9;
-                          border-radius: 4px;
-                        }
-                        .patient-table-container::-webkit-scrollbar-thumb {
-                          background: #cbd5e0;
-                          border-radius: 4px;
-                        }
-                        .patient-table-container::-webkit-scrollbar-thumb:hover {
-                          background: #94a3b8;
-                        }
-                        .patient-table-container::-webkit-scrollbar-corner {
-                          background: #f1f5f9;
-                        }
-                      `
-                    }} />
-                    
-                    <table className="w-full border-collapse text-sm">
-                      <thead className="sticky top-0 bg-gradient-to-r from-gray-50 to-gray-100 z-10">
-                        <tr>
-                          <th className="border-b-2 border-gray-300 px-4 py-3 text-left font-semibold text-gray-800 min-w-[120px] bg-gray-50">
-                            <div className="flex items-center gap-1">
-                              🆔 Patient ID
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse border border-gray-200 text-sm">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[120px]">Patient ID</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[100px]">First Name</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[100px]">Last Name</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[100px]">Date of Birth</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[120px]">Phone Number</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[100px]">Call Status</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[120px]">Treatment</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[150px]">Post Treatment Notes</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[150px]">Post Treatment Prescription</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[150px]">Follow Up Appointment</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[150px]">Post Ops Follow Up Notes</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[150px]">Date for Post Op Follow Up</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[120px]">Post Op Call Status</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[100px]">Created At</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[100px]">Updated At</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredPatients.map((patient, index) => (
+                        <tr key={`patient-${patient.patient_id || index}`} className="hover:bg-gray-50">
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-xs text-gray-600">
+                              {patient.patient_id || 'N/A'}
                             </div>
-                          </th>
-                          <th className="border-b-2 border-gray-300 px-4 py-3 text-left font-semibold text-gray-800 min-w-[120px] bg-gray-50">
-                            <div className="flex items-center gap-1">
-                              👤 First Name
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="font-medium text-gray-900">
+                              {patient.first_name || 'N/A'}
                             </div>
-                          </th>
-                          <th className="border-b-2 border-gray-300 px-4 py-3 text-left font-semibold text-gray-800 min-w-[120px] bg-gray-50">
-                            <div className="flex items-center gap-1">
-                              👤 Last Name
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="font-medium text-gray-900">
+                              {patient.last_name || 'N/A'}
                             </div>
-                          </th>
-                          <th className="border-b-2 border-gray-300 px-4 py-3 text-left font-semibold text-gray-800 min-w-[120px] bg-gray-50">
-                            <div className="flex items-center gap-1">
-                              📅 Date of Birth
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-gray-700">
+                              {patient.date_of_birth || 'N/A'}
                             </div>
-                          </th>
-                          <th className="border-b-2 border-gray-300 px-4 py-3 text-left font-semibold text-gray-800 min-w-[140px] bg-gray-50">
-                            <div className="flex items-center gap-1">
-                              📞 Phone Number
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="font-medium text-gray-900">
+                              {patient.phone_number || 'N/A'}
                             </div>
-                          </th>
-                          <th className="border-b-2 border-gray-300 px-4 py-3 text-left font-semibold text-gray-800 min-w-[120px] bg-gray-50">
-                            <div className="flex items-center gap-1">
-                              📊 Call Status
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <Badge 
+                              variant={patient.call_status === 'called' ? 'default' : 'secondary'}
+                              className={
+                                patient.call_status === 'called' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : patient.call_status === 'failed'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }
+                            >
+                              {patient.call_status === 'called' ? '✅ Called' : 
+                               patient.call_status === 'failed' ? '❌ Failed' : '⏳ Not Called'}
+                            </Badge>
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-gray-700">
+                              {patient.treatment || 'N/A'}
                             </div>
-                          </th>
-                          <th className="border-b-2 border-gray-300 px-4 py-3 text-left font-semibold text-gray-800 min-w-[140px] bg-gray-50">
-                            <div className="flex items-center gap-1">
-                              🦷 Treatment
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-gray-700 whitespace-pre-wrap break-words max-w-[200px]">
+                              {patient.post_treatment_notes || 'N/A'}
                             </div>
-                          </th>
-                          <th className="border-b-2 border-gray-300 px-4 py-3 text-left font-semibold text-gray-800 min-w-[200px] bg-gray-50">
-                            <div className="flex items-center gap-1">
-                              📝 Post Treatment Notes
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-gray-700 whitespace-pre-wrap break-words max-w-[200px]">
+                              {patient.post_treatment_prescription || 'N/A'}
                             </div>
-                          </th>
-                          <th className="border-b-2 border-gray-300 px-4 py-3 text-left font-semibold text-gray-800 min-w-[200px] bg-gray-50">
-                            <div className="flex items-center gap-1">
-                              💊 Prescription
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-gray-700">
+                              {patient.follow_up_appointment || 'N/A'}
                             </div>
-                          </th>
-                          <th className="border-b-2 border-gray-300 px-4 py-3 text-left font-semibold text-gray-800 min-w-[180px] bg-gray-50">
-                            <div className="flex items-center gap-1">
-                              📅 Follow Up Appointment
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-gray-700 whitespace-pre-wrap break-words max-w-[200px]">
+                              {patient.post_ops_follow_up_notes || 'N/A'}
                             </div>
-                          </th>
-                          <th className="border-b-2 border-gray-300 px-4 py-3 text-left font-semibold text-gray-800 min-w-[200px] bg-gray-50">
-                            <div className="flex items-center gap-1">
-                              📋 Follow Up Notes
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-gray-700">
+                              {patient.date_for_post_op_follow_up || 'N/A'}
                             </div>
-                          </th>
-                          <th className="border-b-2 border-gray-300 px-4 py-3 text-left font-semibold text-gray-800 min-w-[180px] bg-gray-50">
-                            <div className="flex items-center gap-1">
-                              📆 Follow Up Date
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-gray-700">
+                              {patient.post_op_call_status || 'N/A'}
                             </div>
-                          </th>
-                          <th className="border-b-2 border-gray-300 px-4 py-3 text-left font-semibold text-gray-800 min-w-[150px] bg-gray-50">
-                            <div className="flex items-center gap-1">
-                              📞 Post Op Call Status
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-xs text-gray-500">
+                              {patient.created_at ? new Date(patient.created_at).toLocaleDateString() : 'N/A'}
                             </div>
-                          </th>
-                          <th className="border-b-2 border-gray-300 px-4 py-3 text-left font-semibold text-gray-800 min-w-[120px] bg-gray-50">
-                            <div className="flex items-center gap-1">
-                              🕐 Created At
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-xs text-gray-500">
+                              {patient.updated_at ? new Date(patient.updated_at).toLocaleDateString() : 'N/A'}
                             </div>
-                          </th>
-                          <th className="border-b-2 border-gray-300 px-4 py-3 text-left font-semibold text-gray-800 min-w-[120px] bg-gray-50">
-                            <div className="flex items-center gap-1">
-                              🕐 Updated At
-                            </div>
-                          </th>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {filteredPatients.map((patient, index) => (
-                          <tr 
-                            key={`patient-${patient.patient_id || index}`} 
-                            className="hover:bg-blue-50 transition-colors duration-150 border-b border-gray-100"
-                          >
-                            <td className="px-4 py-3 border-r border-gray-100">
-                              <div className="text-xs text-gray-600 font-mono bg-gray-100 px-2 py-1 rounded">
-                                {patient.patient_id || 'N/A'}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 border-r border-gray-100">
-                              <div className="font-medium text-gray-900">
-                                {patient.first_name || 'N/A'}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 border-r border-gray-100">
-                              <div className="font-medium text-gray-900">
-                                {patient.last_name || 'N/A'}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 border-r border-gray-100">
-                              <div className="text-gray-700 font-mono text-xs bg-blue-50 px-2 py-1 rounded">
-                                {patient.date_of_birth || 'N/A'}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 border-r border-gray-100">
-                              <div className="font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                                {patient.phone_number || 'N/A'}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 border-r border-gray-100">
-                              <Badge 
-                                variant={patient.call_status === 'called' ? 'default' : 'secondary'}
-                                className={
-                                  patient.call_status === 'called' 
-                                    ? 'bg-green-100 text-green-800 border-green-200' 
-                                    : patient.call_status === 'failed'
-                                    ? 'bg-red-100 text-red-800 border-red-200'
-                                    : 'bg-yellow-100 text-yellow-800 border-yellow-200'
-                                }
-                              >
-                                {patient.call_status === 'called' ? '✅ Called' : 
-                                 patient.call_status === 'failed' ? '❌ Failed' : '⏳ Not Called'}
-                              </Badge>
-                            </td>
-                            <td className="px-4 py-3 border-r border-gray-100">
-                              <div className="text-gray-700 bg-purple-50 px-2 py-1 rounded text-sm">
-                                {patient.treatment || 'N/A'}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 border-r border-gray-100">
-                              <div className="text-gray-700 text-sm bg-gray-50 p-2 rounded max-w-[180px] max-h-[80px] overflow-y-auto">
-                                <div className="whitespace-pre-wrap break-words">
-                                  {patient.post_treatment_notes || 'N/A'}
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 border-r border-gray-100">
-                              <div className="text-gray-700 text-sm bg-green-50 p-2 rounded max-w-[180px] max-h-[80px] overflow-y-auto">
-                                <div className="whitespace-pre-wrap break-words">
-                                  {patient.post_treatment_prescription || 'N/A'}
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 border-r border-gray-100">
-                              <div className="text-gray-700 bg-orange-50 px-2 py-1 rounded text-sm">
-                                {patient.follow_up_appointment || 'N/A'}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 border-r border-gray-100">
-                              <div className="text-gray-700 text-sm bg-blue-50 p-2 rounded max-w-[180px] max-h-[80px] overflow-y-auto">
-                                <div className="whitespace-pre-wrap break-words">
-                                  {patient.post_ops_follow_up_notes || 'N/A'}
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 border-r border-gray-100">
-                              <div className="text-gray-700 bg-indigo-50 px-2 py-1 rounded text-sm">
-                                {patient.date_for_post_op_follow_up || 'N/A'}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 border-r border-gray-100">
-                              <div className="text-gray-700 bg-pink-50 px-2 py-1 rounded text-sm">
-                                {patient.post_op_call_status || 'N/A'}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 border-r border-gray-100">
-                              <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded font-mono">
-                                {patient.created_at ? new Date(patient.created_at).toLocaleDateString() : 'N/A'}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded font-mono">
-                                {patient.updated_at ? new Date(patient.updated_at).toLocaleDateString() : 'N/A'}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      ))}
+                    </tbody>
+                  </table>
                   
-                  {/* Scroll Indicator */}
-                  <div className="bg-gray-50 px-4 py-2 border-t border-gray-200 text-xs text-gray-500 text-center">
-                    💡 Tip: Use horizontal and vertical scroll to navigate through all patient data
+                  {/* Results Summary */}
+                  <div className="mt-4 text-sm text-gray-500 text-center">
+                    Showing {filteredPatients.length} of {patients.length} patients
+                    {searchTerm && ` matching "${searchTerm}"`}
+                    {statusFilter !== 'all' && ` with status "${statusFilter}"`}
                   </div>
-                </div>
-                  
-                {/* Results Summary */}
-                <div className="mt-4 text-sm text-gray-500 text-center">
-                  Showing {filteredPatients.length} of {patients.length} patients
-                  {searchTerm && ` matching "${searchTerm}"`}
-                  {statusFilter !== 'all' && ` with status "${statusFilter}"`}
                 </div>
               )}
             </CardContent>
