@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 import { Upload, FileText, Copy, Download, CheckCircle, AlertCircle, Loader2 } from "lucide-react"
-import AuthenticatedLayout from "../components/AuthenticatedLayout"
+import { AuthenticatedLayout } from "../components/AuthenticatedLayout"
 
 interface ExtractedData {
   ocr: {
