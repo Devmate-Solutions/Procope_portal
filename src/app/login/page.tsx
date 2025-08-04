@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label'
 import { Alert } from '@/components/ui/alert'
 import { Eye, EyeOff, LogIn } from 'lucide-react'
 import { login, getCurrentUser } from '@/lib/auth'
-
+import Image from 'next/image'
+import logo from '../../../public/mydent.png' // Adjust the path as necessary
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -64,8 +65,11 @@ export default function LoginPage() {
           <CardTitle className="text-2xl font-bold text-gray-900">
             Sign In
           </CardTitle>
+          <div className="flex justify-center mb-4">
+            <Image src={logo} alt="MyDent Logo" width={80} height={80} className="object-contain" />
+          </div>
           <p className="text-gray-600">
-            Access Mydent AI dashboard
+        Mydent AI dashboard
           </p>
         </CardHeader>
         <CardContent>
@@ -139,13 +143,7 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-gray-600">
-            <p>Demo Credentials:</p>
-            <div className="mt-2 space-y-1 text-xs">
-              <p><strong>Orasurg:</strong> admin@orasurg.com / Admin@OraSurg#2025</p>
-              <p><strong>MyDentAI:</strong> ayazmomin@gmail.com / MyDent@AI#2025</p>
-            </div>
-          </div>
+       
         </CardContent>
       </Card>
     </div>
