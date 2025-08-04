@@ -1387,7 +1387,8 @@ Ayaz,Momin,03/20/1983,96896466583,teeth cleaning,care needed on bottom left toot
                   onChange={(e) => setCsvData(e.target.value)}
                   placeholder={isTemplate1User ? 
                     `firstName,lastName,DOB,phoneNumber,Treatment,postTreatment_Notes,postTreatment_Prescription,followUpAppointment,callStatus,followUpNotes,followUpDate,postFollowupStatus
-Ayaz,Momin,03/20/1983,+14043190788,teeth cleaning,care needed on bottom left tooth,prescribed mouth wash,"08/15/2025 , 02:00 CST",not-called,[Call Summary],[Calling Date & Time],[Call Picked/ Not Picked etc]` :
+John,Smith,01/15/1985,+15551234567,dental cleaning,routine checkup completed,fluoride treatment recommended,"03/15/2025 , 10:00 AM",not-called,follow up in 6 months,03/15/2025,pending
+Jane,Doe,05/22/1990,+15559876543,cavity filling,filled upper molar,pain medication prescribed,"02/28/2025 , 02:30 PM",not-called,check healing progress,02/28/2025,pending` :
                     `from_number,to_number,agent_id,customer_name
 +1234567890,+0987654321,agent_123,John Doe
 +1234567891,+0987654322,agent_123,Jane Smith`
