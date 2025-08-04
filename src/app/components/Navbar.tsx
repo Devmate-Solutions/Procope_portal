@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { LogOut, User, Building } from 'lucide-react'
 import { getCurrentUser, logout, type UserProfile } from '@/lib/auth'
-
+import Image from 'next/image'
+import logo from '../../../public/mydent.png'
 export function Navbar() {
   const [user, setUser] = useState<UserProfile | null>(null)
   const router = useRouter()
@@ -31,14 +32,15 @@ export function Navbar() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <h1 className="text-xl font-semibold text-gray-900">
-            Retell AI Dashboard
+            Mydent AI Dashboard
           </h1>
-          {user?.workspaceName && (
-            <Badge variant="outline" className="flex items-center gap-1">
-              <Building className="h-3 w-3" />
-              {user.workspaceName}
-            </Badge>
+          {user && (
+            <div className="flex items-center space-x-2">
+             <Image src={logo} alt="Logo" width={100} height={100} className="rounded-full" />
+             
+            </div>
           )}
+         
         </div>
         
         <div className="flex items-center space-x-4">
