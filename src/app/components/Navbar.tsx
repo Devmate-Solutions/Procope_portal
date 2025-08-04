@@ -38,7 +38,9 @@ export function Navbar() {
              
             </div>
           )}
-         
+          <h1 className="text-xl pl-28 font-semibold text-gray-900">
+            Mydent AI Dashboard
+          </h1>
         </div>
         
         <div className="flex items-center space-x-4">
