@@ -65,7 +65,7 @@ export default function LoginPage() {
             Sign In
           </CardTitle>
           <p className="text-gray-600">
-            Access your Retell AI dashboard
+            Access Mydent AI dashboard
           </p>
         </CardHeader>
         <CardContent>
