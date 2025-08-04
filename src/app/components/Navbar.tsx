@@ -31,9 +31,7 @@ export function Navbar() {
     <nav className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <h1 className="text-xl font-semibold text-gray-900">
-            Mydent AI Dashboard
-          </h1>
+         
           {user && (
             <div className="flex items-center space-x-2">
              <Image src={logo} alt="Logo" width={100} height={100} className="rounded-full" />
