@@ -768,7 +768,28 @@ Ayaz,Momin,03/20/1983,96896466583,teeth cleaning,care needed on bottom left toot
 
   return (
     <AuthenticatedLayout requiredPage="create-calls">
-      <div className="space-y-6">
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          /* Hide page-level horizontal scrollbar completely */
+          html, body {
+            overflow-x: hidden !important;
+            max-width: 100vw !important;
+          }
+          
+          /* Ensure main content doesn't overflow */
+          .space-y-6 {
+            max-width: 100vw !important;
+            overflow-x: hidden !important;
+          }
+          
+          /* Only allow table to scroll horizontally */
+          .patient-history-scroll {
+            overflow-x: auto !important;
+            overflow-y: auto !important;
+          }
+        `
+      }} />
+      <div className="space-y-6 max-w-full overflow-x-hidden">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Create Outbound Calls</h1>
           <p className="text-muted-foreground">
@@ -1131,25 +1152,75 @@ Ayaz,Momin,03/20/1983,96896466583,teeth cleaning,care needed on bottom left toot
                   )}
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse border border-gray-200 text-sm">
+                <div className="w-full max-w-full overflow-hidden">
+                  {/* Enhanced Horizontal Scroll Container - Table Only */}
+                  <div 
+                    className="patient-history-scroll overflow-x-auto overflow-y-auto max-h-[500px] border border-gray-200 rounded-lg"
+                    style={{
+                      scrollbarWidth: 'auto' as any,
+                      scrollbarColor: '#DC2626 #F3F4F6',
+                      maxWidth: '100%'
+                    }}
+                  >
+                    <style dangerouslySetInnerHTML={{
+                      __html: `
+                        .patient-history-scroll {
+                          scrollbar-width: thick !important;
+                          scrollbar-color: #DC2626 #F3F4F6 !important;
+                        }
+                        .patient-history-scroll::-webkit-scrollbar {
+                          width: 16px !important;
+                          height: 16px !important;
+                          display: block !important;
+                        }
+                        .patient-history-scroll::-webkit-scrollbar-track {
+                          background: #F3F4F6 !important;
+                          border-radius: 8px !important;
+                          border: 1px solid #E5E7EB !important;
+                        }
+                        .patient-history-scroll::-webkit-scrollbar-thumb {
+                          background: #DC2626 !important;
+                          border-radius: 8px !important;
+                          border: 2px solid #F3F4F6 !important;
+                          min-height: 40px !important;
+                          min-width: 40px !important;
+                        }
+                        .patient-history-scroll::-webkit-scrollbar-thumb:hover {
+                          background: #B91C1C !important;
+                        }
+                        .patient-history-scroll::-webkit-scrollbar-thumb:active {
+                          background: #991B1B !important;
+                        }
+                        .patient-history-scroll::-webkit-scrollbar-corner {
+                          background: #F3F4F6 !important;
+                        }
+                        /* Force scrollbars to always be visible */
+                        .patient-history-scroll::-webkit-scrollbar-track:horizontal {
+                          display: block !important;
+                        }
+                        .patient-history-scroll::-webkit-scrollbar-track:vertical {
+                          display: block !important;
+                        }
+                      `
+                    }} />
+                    <table className="w-full border-collapse text-sm" style={{ minWidth: '1400px' }}>
                     <thead>
                       <tr className="bg-gray-50">
-                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[120px]">Patient ID</th>
-                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[100px]">First Name</th>
-                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[100px]">Last Name</th>
-                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[100px]">Date of Birth</th>
-                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[120px]">Phone Number</th>
-                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[100px]">Call Status</th>
-                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[120px]">Treatment</th>
-                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[150px]">Post Treatment Notes</th>
-                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[150px]">Post Treatment Prescription</th>
-                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[150px]">Follow Up Appointment</th>
-                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[150px]">Post Ops Follow Up Notes</th>
-                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[150px]">Date for Post Op Follow Up</th>
-                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[120px]">Post Op Call Status</th>
-                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[100px]">Created At</th>
-                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[100px]">Updated At</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Patient ID</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">First Name</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Last Name</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[90px]">Date of Birth</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[100px]">Phone Number</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Call Status</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[90px]">Treatment</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[120px]">Post Treatment Notes</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[120px]">Post Treatment Prescription</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[110px]">Follow Up Appointment</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[120px]">Post Ops Follow Up Notes</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[110px]">Date for Post Op Follow Up</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[100px]">Post Op Call Status</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Created At</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Updated At</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1243,7 +1314,8 @@ Ayaz,Momin,03/20/1983,96896466583,teeth cleaning,care needed on bottom left toot
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                    </table>
+                  </div>
                   
                   {/* Results Summary */}
                   <div className="mt-4 text-sm text-gray-500 text-center">
