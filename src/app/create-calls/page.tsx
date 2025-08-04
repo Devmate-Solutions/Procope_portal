@@ -1132,107 +1132,112 @@ Ayaz,Momin,03/20/1983,96896466583,teeth cleaning,care needed on bottom left toot
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full border-collapse border border-gray-200">
+                  <table className="w-full border-collapse border border-gray-200 text-sm">
                     <thead>
                       <tr className="bg-gray-50">
-                        <th className="border border-gray-200 px-4 py-3 text-left font-medium text-gray-900">Patient</th>
-                        <th className="border border-gray-200 px-4 py-3 text-left font-medium text-gray-900">Status</th>
-                        <th className="border border-gray-200 px-4 py-3 text-left font-medium text-gray-900">Contact</th>
-                        <th className="border border-gray-200 px-4 py-3 text-left font-medium text-gray-900">Treatment</th>
-                        <th className="border border-gray-200 px-4 py-3 text-left font-medium text-gray-900">Appointment</th>
-                        <th className="border border-gray-200 px-4 py-3 text-left font-medium text-gray-900">Notes</th>
-                        <th className="border border-gray-200 px-4 py-3 text-left font-medium text-gray-900">Updated</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[120px]">Patient ID</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[100px]">First Name</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[100px]">Last Name</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[100px]">Date of Birth</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[120px]">Phone Number</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[100px]">Call Status</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[120px]">Treatment</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[150px]">Post Treatment Notes</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[150px]">Post Treatment Prescription</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[150px]">Follow Up Appointment</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[150px]">Post Ops Follow Up Notes</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[150px]">Date for Post Op Follow Up</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[120px]">Post Op Call Status</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[100px]">Created At</th>
+                        <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-900 min-w-[100px]">Updated At</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredPatients.map((patient, index) => (
                         <tr key={`patient-${patient.patient_id || index}`} className="hover:bg-gray-50">
-                          <td className="border border-gray-200 px-4 py-3">
-                            <div>
-                              <div className="font-medium text-gray-900">
-                                {patient.first_name} {patient.last_name}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                DOB: {patient.date_of_birth || 'N/A'}
-                              </div>
-                              <div className="text-xs text-gray-400">
-                                ID: {patient.patient_id || 'N/A'}
-                              </div>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-xs text-gray-600">
+                              {patient.patient_id || 'N/A'}
                             </div>
                           </td>
-                          <td className="border border-gray-200 px-4 py-3">
-                            <div className="space-y-1">
-                              <Badge 
-                                variant={patient.call_status === 'called' ? 'default' : 'secondary'}
-                                className={
-                                  patient.call_status === 'called' 
-                                    ? 'bg-green-100 text-green-800' 
-                                    : patient.call_status === 'failed'
-                                    ? 'bg-red-100 text-red-800'
-                                    : 'bg-yellow-100 text-yellow-800'
-                                }
-                              >
-                                {patient.call_status === 'called' ? '✅ Called' : 
-                                 patient.call_status === 'failed' ? '❌ Failed' : '⏳ Not Called'}
-                              </Badge>
-                              {patient.post_op_call_status && (
-                                <div className="text-xs text-gray-500">
-                                  Post-op: {patient.post_op_call_status}
-                                </div>
-                              )}
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="font-medium text-gray-900">
+                              {patient.first_name || 'N/A'}
                             </div>
                           </td>
-                          <td className="border border-gray-200 px-4 py-3">
-                            <div className="text-sm">
-                              <div className="font-medium">{patient.phone_number || 'N/A'}</div>
-                              {patient.date_for_post_op_follow_up && (
-                                <div className="text-gray-500">
-                                  Follow-up: {patient.date_for_post_op_follow_up}
-                                </div>
-                              )}
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="font-medium text-gray-900">
+                              {patient.last_name || 'N/A'}
                             </div>
                           </td>
-                          <td className="border border-gray-200 px-4 py-3">
-                            <div className="text-sm">
-                              <div className="font-medium">{patient.treatment || 'N/A'}</div>
-                              {patient.post_treatment_prescription && (
-                                <div className="text-xs text-gray-500 mt-1">
-                                  Rx: {patient.post_treatment_prescription.length > 30 
-                                    ? `${patient.post_treatment_prescription.substring(0, 30)}...` 
-                                    : patient.post_treatment_prescription}
-                                </div>
-                              )}
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-gray-700">
+                              {patient.date_of_birth || 'N/A'}
                             </div>
                           </td>
-                          <td className="border border-gray-200 px-4 py-3">
-                            <div className="text-sm">
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="font-medium text-gray-900">
+                              {patient.phone_number || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <Badge 
+                              variant={patient.call_status === 'called' ? 'default' : 'secondary'}
+                              className={
+                                patient.call_status === 'called' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : patient.call_status === 'failed'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }
+                            >
+                              {patient.call_status === 'called' ? '✅ Called' : 
+                               patient.call_status === 'failed' ? '❌ Failed' : '⏳ Not Called'}
+                            </Badge>
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-gray-700">
+                              {patient.treatment || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-gray-700 whitespace-pre-wrap break-words max-w-[200px]">
+                              {patient.post_treatment_notes || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-gray-700 whitespace-pre-wrap break-words max-w-[200px]">
+                              {patient.post_treatment_prescription || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-gray-700">
                               {patient.follow_up_appointment || 'N/A'}
                             </div>
                           </td>
-                          <td className="border border-gray-200 px-4 py-3">
-                            <div className="text-sm space-y-1">
-                              {patient.post_treatment_notes && (
-                                <div className="text-xs bg-gray-100 p-2 rounded">
-                                  <strong>Treatment:</strong>
-                                  <div className="mt-1 whitespace-pre-wrap break-words">
-                                    {patient.post_treatment_notes}
-                                  </div>
-                                </div>
-                              )}
-                              {patient.post_ops_follow_up_notes && (
-                                <div className="text-xs bg-blue-100 p-2 rounded">
-                                  <strong>Follow-up:</strong>
-                                  <div className="mt-1 whitespace-pre-wrap break-words">
-                                    {patient.post_ops_follow_up_notes}
-                                  </div>
-                                </div>
-                              )}
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-gray-700 whitespace-pre-wrap break-words max-w-[200px]">
+                              {patient.post_ops_follow_up_notes || 'N/A'}
                             </div>
                           </td>
-                          <td className="border border-gray-200 px-4 py-3">
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-gray-700">
+                              {patient.date_for_post_op_follow_up || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-gray-700">
+                              {patient.post_op_call_status || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
                             <div className="text-xs text-gray-500">
-                              <div>Created: {patient.created_at ? new Date(patient.created_at).toLocaleDateString() : 'N/A'}</div>
-                              <div>Updated: {patient.updated_at ? new Date(patient.updated_at).toLocaleDateString() : 'N/A'}</div>
+                              {patient.created_at ? new Date(patient.created_at).toLocaleDateString() : 'N/A'}
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-xs text-gray-500">
+                              {patient.updated_at ? new Date(patient.updated_at).toLocaleDateString() : 'N/A'}
                             </div>
                           </td>
                         </tr>
