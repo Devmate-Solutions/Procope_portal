@@ -12,18 +12,20 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Users, UserPlus, Edit, Trash2, Key, Eye, EyeOff } from 'lucide-react'
 import { getUsers, createUser, updateUser, deleteUser, resetUserPassword, getAgents } from '@/lib/aws-api'
-import { getCurrentUser } from '@/lib/auth'
+import { getCurrentUser, getAccessiblePages, PAGE_ACCESS_TEMPLATES } from '@/lib/auth'
 
 interface User {
-  user_email: string
-  display_name: string
+  id?: string
+  email: string
+  displayName: string
   role: string
-  agent_ids: string[]
-  allowed_pages: string[]
-  account_enabled: boolean
-  workspace_id: string
-  user_id?: string
-  has_temporary_password?: boolean
+  agentIds: string[]
+  allowedPages?: string[]
+  accountEnabled: boolean
+  workspaceId: string
+  hasTemporaryPassword?: boolean
+  createdAt?: string
+  updatedAt?: string | null
 }
 
 const ROLES = [
@@ -35,7 +37,7 @@ const ROLES = [
 
 const PAGE_TEMPLATES = [
   { value: 'basic', label: 'Basic (Dashboard, Call History)' },
-  { value: 'template1', label: 'Template 1 (Dashboard, Analytics, Outbound, User Mgmt)' },
+  { value: 'template1', label: 'Nomad (Dashboard, Analytics, Outbound, User Mgmt)' },
   { value: 'scribe', label: 'Scribe (+ AI Transcription)' },
   { value: 'claims', label: 'Claims (+ Insurance Processing)' },
   { value: 'usermanage', label: 'User Management Only' }
@@ -108,11 +110,11 @@ export default function UserManagementPage() {
       }
 
       await createUser({
-        user_email: formData.user_email,
-        display_name: formData.display_name,
+        email: formData.user_email,
+        displayName: formData.display_name,
         role: formData.role,
-        agent_ids: formData.agent_ids,
-        allowed_pages: formData.allowed_pages,
+        agentIds: formData.agent_ids,
+        allowedPages: formData.allowed_pages,
         password: formData.password || undefined
       })
 
@@ -128,7 +130,7 @@ export default function UserManagementPage() {
     try {
       if (!selectedUser) return
 
-      await updateUser(selectedUser.user_email, {
+      await updateUser(selectedUser.email, {
         display_name: formData.display_name,
         role: formData.role,
         agent_ids: formData.agent_ids,
@@ -168,7 +170,7 @@ export default function UserManagementPage() {
         return
       }
 
-      await resetUserPassword(selectedUser.user_email, passwordData.newPassword, true)
+      await resetUserPassword(selectedUser.email, passwordData.newPassword, true)
       
       setIsPasswordDialogOpen(false)
       setSelectedUser(null)
@@ -194,13 +196,13 @@ export default function UserManagementPage() {
   const openEditDialog = (user: User) => {
     setSelectedUser(user)
     setFormData({
-      user_email: user.user_email,
-      display_name: user.display_name,
+      user_email: user.email,
+      display_name: user.displayName,
       role: user.role,
-      agent_ids: user.agent_ids || [],
-      allowed_pages: user.allowed_pages || [],
+      agent_ids: user.agentIds || [],
+      allowed_pages: user.allowedPages || [],
       password: '',
-      account_enabled: user.account_enabled
+      account_enabled: user.accountEnabled
     })
     setIsEditDialogOpen(true)
   }
@@ -216,6 +218,69 @@ export default function UserManagementPage() {
     if (currentUser.role === 'owner') return true
     if (currentUser.role === 'admin' && user.role !== 'owner') return true
     return false
+  }
+
+  // Get available individual pages based on current user's permissions
+  const getAvailablePages = () => {
+    if (!currentUser || !currentUser.allowedPages) return []
+    
+    const availablePages = new Set<string>()
+    
+    // For each allowed page/template, expand to individual pages
+    currentUser.allowedPages.forEach(allowedPage => {
+      // Add the page itself
+      availablePages.add(allowedPage)
+      
+      // If it's a template, add all pages from that template
+      const template = PAGE_ACCESS_TEMPLATES[allowedPage as keyof typeof PAGE_ACCESS_TEMPLATES]
+      if (template) {
+        template.forEach(page => availablePages.add(page))
+      }
+    })
+    
+    // Remove duplicates: if both 'usermanage' and 'user-management' exist, keep only 'user-management'
+    if (availablePages.has('usermanage') && availablePages.has('user-management')) {
+      availablePages.delete('usermanage')
+    }
+    
+    // Convert to array and create page objects with labels
+    return Array.from(availablePages).map(page => ({
+      value: page,
+      label: getPageLabel(page)
+    }))
+  }
+
+  // Get human-readable label for a page
+  const getPageLabel = (page: string): string => {
+    const pageLabels: { [key: string]: string } = {
+      'dashboard': 'Dashboard',
+      'call-history': 'Call History',
+      'analytics': 'Analytics',
+      'create-calls': 'Create Calls',
+      'user-management': 'User Management',
+      'scribe': 'Scribe',
+      'scribe-history': 'Scribe History',
+      'claims-archive': 'Claims Archive',
+      'basic': 'Basic Access',
+      'template1': 'All Access',
+      'usermanage': 'User Management Only'
+    }
+    return pageLabels[page] || page.charAt(0).toUpperCase() + page.slice(1)
+  }
+
+  // Get available roles based on current user's role
+  const getAvailableRoles = () => {
+    if (!currentUser) return ROLES
+    
+    if (currentUser.role === 'owner') {
+      return ROLES // Owner can assign any role
+    } else if (currentUser.role === 'admin') {
+      return ROLES.filter(role => role.value !== 'owner') // Admin cannot create owners
+    } else if (currentUser.role === 'subadmin') {
+      return ROLES.filter(role => !['owner', 'admin'].includes(role.value)) // Subadmin can only create users and subadmins
+    } else {
+      return ROLES.filter(role => role.value === 'user') // Users can only create users
+    }
   }
 
   if (isLoading) {
@@ -313,33 +378,44 @@ export default function UserManagementPage() {
                 </div>
 
                 <div>
-                  <Label>Page Access Templates</Label>
+                  <Label>Page Access</Label>
                   <div className="space-y-2 mt-2">
-                    {PAGE_TEMPLATES.map((template) => (
-                      <div key={template.value} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={template.value}
-                          checked={formData.allowed_pages.includes(template.value)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setFormData({
-                                ...formData,
-                                allowed_pages: [...formData.allowed_pages, template.value]
-                              })
-                            } else {
-                              setFormData({
-                                ...formData,
-                                allowed_pages: formData.allowed_pages.filter(p => p !== template.value)
-                              })
-                            }
-                          }}
-                        />
-                        <Label htmlFor={template.value} className="text-sm">
-                          {template.label}
-                        </Label>
-                      </div>
-                    ))}
+                    {getAvailablePages().length > 0 ? (
+                      getAvailablePages().map((page) => (
+                        <div key={page.value} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={page.value}
+                            checked={formData.allowed_pages.includes(page.value)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setFormData({
+                                  ...formData,
+                                  allowed_pages: [...formData.allowed_pages, page.value]
+                                })
+                              } else {
+                                setFormData({
+                                  ...formData,
+                                  allowed_pages: formData.allowed_pages.filter(p => p !== page.value)
+                                })
+                              }
+                            }}
+                          />
+                          <Label htmlFor={page.value} className="text-sm">
+                            {page.label}
+                          </Label>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500">
+                        No pages available based on your permissions.
+                      </p>
+                    )}
                   </div>
+                  {currentUser && (
+                    <p className="text-xs text-gray-500 mt-2">
+                      You can only assign pages that you have access to: {currentUser.allowedPages?.join(', ') || 'None'}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -409,26 +485,26 @@ export default function UserManagementPage() {
             <div className="space-y-4">
               {users.length > 0 ? (
                 users.map((user) => (
-                  <div key={user.user_email} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div key={user.email} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium">{user.display_name}</span>
-                        <Badge variant={user.account_enabled ? 'default' : 'secondary'}>
-                          {user.account_enabled ? 'Active' : 'Disabled'}
+                        <span className="font-medium">{user.displayName}</span>
+                        <Badge variant={user.accountEnabled ? 'default' : 'secondary'}>
+                          {user.accountEnabled ? 'Active' : 'Disabled'}
                         </Badge>
-                        {user.has_temporary_password && (
+                        {user.hasTemporaryPassword && (
                           <Badge variant="outline">Temp Password</Badge>
                         )}
                       </div>
-                      <div className="text-sm text-muted-foreground">{user.user_email}</div>
+                      <div className="text-sm text-muted-foreground">{user.email}</div>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline">{user.role}</Badge>
                         <span className="text-xs text-muted-foreground">
-                          Pages: {user.allowed_pages?.join(', ') || 'None'}
+                          Pages: {user.allowedPages?.join(', ') || 'None'}
                         </span>
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        Agents: {user.agent_ids?.length || 0} assigned
+                        Agents: {user.agentIds?.length || 0} assigned
                       </div>
                     </div>
                     
@@ -451,7 +527,7 @@ export default function UserManagementPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleDeleteUser(user.user_email)}
+                          onClick={() => handleDeleteUser(user.email)}
                           className="text-red-600 hover:text-red-700"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -524,33 +600,44 @@ export default function UserManagementPage() {
               </div>
 
               <div>
-                <Label>Page Access Templates</Label>
+                <Label>Page Access</Label>
                 <div className="space-y-2 mt-2">
-                  {PAGE_TEMPLATES.map((template) => (
-                    <div key={template.value} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`edit-${template.value}`}
-                        checked={formData.allowed_pages.includes(template.value)}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setFormData({
-                              ...formData,
-                              allowed_pages: [...formData.allowed_pages, template.value]
-                            })
-                          } else {
-                            setFormData({
-                              ...formData,
-                              allowed_pages: formData.allowed_pages.filter(p => p !== template.value)
-                            })
-                          }
-                        }}
-                      />
-                      <Label htmlFor={`edit-${template.value}`} className="text-sm">
-                        {template.label}
-                      </Label>
-                    </div>
-                  ))}
+                  {getAvailablePages().length > 0 ? (
+                    getAvailablePages().map((page) => (
+                      <div key={page.value} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`edit-${page.value}`}
+                          checked={formData.allowed_pages.includes(page.value)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setFormData({
+                                ...formData,
+                                allowed_pages: [...formData.allowed_pages, page.value]
+                              })
+                            } else {
+                              setFormData({
+                                ...formData,
+                                allowed_pages: formData.allowed_pages.filter(p => p !== page.value)
+                              })
+                            }
+                          }}
+                        />
+                        <Label htmlFor={`edit-${page.value}`} className="text-sm">
+                          {page.label}
+                        </Label>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-500">
+                      No pages available based on your permissions.
+                    </p>
+                  )}
                 </div>
+                {currentUser && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    You can only assign pages that you have access to: {currentUser.allowedPages?.join(', ') || 'None'}
+                  </p>
+                )}
               </div>
 
               <div>

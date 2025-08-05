@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   FaUserPlus, 
   FaArrowLeft,
@@ -15,24 +16,38 @@ import {
   FaKey,
   FaRandom
 } from 'react-icons/fa';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, getAccessiblePages, PAGE_ACCESS_TEMPLATES } from '@/lib/auth';
+import { createUser, getAgents } from '@/lib/aws-api';
 import Link from 'next/link';
 import { AuthenticatedLayout } from '../components/AuthenticatedLayout';
 
 interface AddUserForm {
-  email: string;
-  displayName: string;
+  user_email: string;
+  display_name: string;
   password: string;
-  role: 'owner' | 'admin' | 'subadmin';
+  role: 'owner' | 'admin' | 'subadmin' | 'user';
+  agent_ids: string[];
+  allowed_pages: string[];
 }
+
+const PAGE_TEMPLATES = [
+  { value: 'basic', label: 'Basic (Dashboard, Call History, Create Calls, Analytics)' },
+  { value: 'template1', label: 'Template 1 (Dashboard, Analytics, Outbound, User Mgmt)' },
+  { value: 'scribe', label: 'Scribe (+ AI Transcription)' },
+  { value: 'claims', label: 'Claims (+ Insurance Processing)' },
+  { value: 'usermanage', label: 'User Management Only' }
+];
 
 export default function AddUserPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [agents, setAgents] = useState<any[]>([]);
   const [formData, setFormData] = useState<AddUserForm>({
-    email: '',
-    displayName: '',
+    user_email: '',
+    display_name: '',
     password: '',
-    role: 'subadmin',
+    role: 'user',
+    agent_ids: [],
+    allowed_pages: [],
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -54,7 +69,17 @@ export default function AddUserPage() {
     }
 
     setCurrentUser(user);
+    loadAgents();
   }, [router]);
+
+  const loadAgents = async () => {
+    try {
+      const agentsData = await getAgents();
+      setAgents(Array.isArray(agentsData) ? agentsData : []);
+    } catch (error) {
+      console.error('Failed to load agents:', error);
+    }
+  };
 
   const generateRandomPassword = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
@@ -69,6 +94,44 @@ export default function AddUserPage() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const getAvailableRoles = () => {
+    const roles = ['user'];
+    if (currentUser.role === 'owner') {
+      roles.push('subadmin', 'admin', 'owner');
+    } else if (currentUser.role === 'admin') {
+      roles.push('subadmin', 'admin');
+    } else if (currentUser.role === 'subadmin') {
+      roles.push('subadmin');
+    }
+    return roles;
+  };
+
+  const getInheritedPermissions = () => {
+    if (!currentUser) return [];
+    
+    // Get current user's accessible pages
+    const currentUserPages = getAccessiblePages(currentUser);
+    
+    // Filter based on role hierarchy - new user can have same or fewer permissions
+    const availablePages = currentUserPages.filter(page => {
+      // If creating a user with higher role, they can have more permissions
+      if (formData.role === 'owner' && currentUser.role === 'owner') return true;
+      if (formData.role === 'admin' && ['owner', 'admin'].includes(currentUser.role)) return true;
+      if (formData.role === 'subadmin' && ['owner', 'admin', 'subadmin'].includes(currentUser.role)) return true;
+      if (formData.role === 'user') return true;
+      return false;
+    });
+
+    return availablePages;
+  };
+
+  const getInheritedAgents = () => {
+    if (!currentUser || !currentUser.agentIds) return [];
+    
+    // New user gets same or subset of current user's agents
+    return currentUser.agentIds;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -76,7 +139,7 @@ export default function AddUserPage() {
     setSuccess(null);
 
     // Basic validation
-    if (!formData.email || !formData.displayName || !formData.password) {
+    if (!formData.user_email || !formData.display_name || !formData.password) {
       setError('Please fill in all required fields');
       setIsLoading(false);
       return;
@@ -88,41 +151,41 @@ export default function AddUserPage() {
       return;
     }
 
+    // Validate role permissions
+    const availableRoles = getAvailableRoles();
+    if (!availableRoles.includes(formData.role)) {
+      setError('You do not have permission to create users with this role');
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      // Compose payload
-      const payload = {
-        email: formData.email,
-        displayName: formData.displayName,
+      // Use inherited permissions if none selected
+      const finalAgentIds = formData.agent_ids.length > 0 ? formData.agent_ids : getInheritedAgents();
+      const finalAllowedPages = formData.allowed_pages.length > 0 ? formData.allowed_pages : ['basic']; // Default to basic access
+
+      // Create user using AWS API
+      const result = await createUser({
+        user_email: formData.user_email,
+        display_name: formData.display_name,
         role: formData.role,
+        agent_ids: finalAgentIds,
+        allowed_pages: finalAllowedPages,
         password: formData.password,
-        agentIds: currentUser.agentIds || [],
-        workspaceId: currentUser.workspaceId,
-      };
-
-      // Get auth token
-      const token = localStorage.getItem('auth_token');
-      if (!token) throw new Error('Not authenticated');
-
-      const response = await fetch('https://func-retell425.azurewebsites.net/api/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
       });
 
-      const data = await response.json();
-      if (data.success) {
+      if (result.success || result.user_email) {
         setSuccess('User added successfully!');
         setFormData({
-          email: '',
-          displayName: '',
+          user_email: '',
+          display_name: '',
           password: '',
-          role: 'subadmin',
+          role: 'user',
+          agent_ids: [],
+          allowed_pages: [],
         });
       } else {
-        setError(data.error || 'Failed to add user');
+        setError(result.error || 'Failed to add user');
       }
     } catch (err: any) {
       setError(err.message || 'Failed to add user');
@@ -178,24 +241,24 @@ export default function AddUserPage() {
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Email */}
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email *</Label>
+                  <Label htmlFor="user_email">Email *</Label>
                   <Input
-                    id="email"
+                    id="user_email"
                     type="email"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    value={formData.user_email}
+                    onChange={(e) => handleInputChange('user_email', e.target.value)}
                     placeholder="Enter email"
                     required
                   />
                 </div>
                 {/* Display Name */}
                 <div className="space-y-2">
-                  <Label htmlFor="displayName">Display Name *</Label>
+                  <Label htmlFor="display_name">Display Name *</Label>
                   <Input
-                    id="displayName"
+                    id="display_name"
                     type="text"
-                    value={formData.displayName}
-                    onChange={(e) => handleInputChange('displayName', e.target.value)}
+                    value={formData.display_name}
+                    onChange={(e) => handleInputChange('display_name', e.target.value)}
                     placeholder="Enter display name"
                     required
                   />
@@ -203,11 +266,12 @@ export default function AddUserPage() {
                 {/* Role */}
                 <div className="space-y-2">
                   <Label htmlFor="role">Role *</Label>
-                  <Select value={formData.role} onValueChange={(value: 'owner' | 'admin' | 'subadmin') => handleInputChange('role', value)}>
+                  <Select value={formData.role} onValueChange={(value: 'owner' | 'admin' | 'subadmin' | 'user') => handleInputChange('role', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select role" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="user">User</SelectItem>
                       <SelectItem value="subadmin">Sub Admin</SelectItem>
                       {(currentUser.role === 'owner' || currentUser.role === 'admin') && (
                         <SelectItem value="admin">Admin</SelectItem>
@@ -219,10 +283,10 @@ export default function AddUserPage() {
                   </Select>
                   <p className="text-sm text-gray-500">
                     {currentUser.role === 'owner'
-                      ? 'Owners can create Owner, Admin, and Sub Admin accounts'
+                      ? 'Owners can create Owner, Admin, Sub Admin, and User accounts'
                       : currentUser.role === 'admin'
-                      ? 'Admins can create Admin and Sub Admin accounts'
-                      : 'You can only create Sub Admin accounts'
+                      ? 'Admins can create Admin, Sub Admin, and User accounts'
+                      : 'You can only create Sub Admin and User accounts'
                     }
                   </p>
                 </div>
@@ -265,15 +329,96 @@ export default function AddUserPage() {
                     Password must be at least 8 characters long
                   </p>
                 </div>
-                {/* Workspace Agent IDs Info */}
+
+                {/* Page Access Templates */}
                 <div className="space-y-2">
-                  <Label>Workspace Agent IDs</Label>
-                  <div className="p-3 bg-gray-50 rounded border text-gray-700">
-                    {currentUser.agentIds && currentUser.agentIds.length > 0
-                      ? `Agent IDs: ${currentUser.agentIds.join(', ')}`
-                      : 'No agent IDs available in current workspace'}
+                  <Label>Page Access Templates</Label>
+                  <div className="space-y-2 mt-2">
+                    {PAGE_TEMPLATES.map((template) => (
+                      <div key={template.value} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={template.value}
+                          checked={formData.allowed_pages.includes(template.value)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setFormData({
+                                ...formData,
+                                allowed_pages: [...formData.allowed_pages, template.value]
+                              });
+                            } else {
+                              setFormData({
+                                ...formData,
+                                allowed_pages: formData.allowed_pages.filter(p => p !== template.value)
+                              });
+                            }
+                          }}
+                        />
+                        <Label htmlFor={template.value} className="text-sm">
+                          {template.label}
+                        </Label>
+                      </div>
+                    ))}
                   </div>
-                  <small className="text-gray-500 italic">These will be automatically assigned to the new user</small>
+                  <p className="text-sm text-gray-500">
+                    {formData.allowed_pages.length === 0 
+                      ? 'If no templates are selected, user will get basic access by default'
+                      : `Selected: ${formData.allowed_pages.join(', ')}`
+                    }
+                  </p>
+                </div>
+
+                {/* Agent Access */}
+                <div className="space-y-2">
+                  <Label>Agent Access</Label>
+                  <div className="space-y-2 mt-2 max-h-32 overflow-y-auto border rounded p-2">
+                    {agents.length > 0 ? (
+                      agents.map((agent) => (
+                        <div key={agent.agent_id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={agent.agent_id}
+                            checked={formData.agent_ids.includes(agent.agent_id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setFormData({
+                                  ...formData,
+                                  agent_ids: [...formData.agent_ids, agent.agent_id]
+                                });
+                              } else {
+                                setFormData({
+                                  ...formData,
+                                  agent_ids: formData.agent_ids.filter(id => id !== agent.agent_id)
+                                });
+                              }
+                            }}
+                          />
+                          <Label htmlFor={agent.agent_id} className="text-sm">
+                            {agent.agent_name || agent.agent_id} ({agent.type})
+                          </Label>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500">No agents available</p>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    {formData.agent_ids.length === 0 
+                      ? 'If no agents are selected, user will inherit your agent access'
+                      : `Selected: ${formData.agent_ids.length} agent(s)`
+                    }
+                  </p>
+                </div>
+
+                {/* Current User's Permissions Info */}
+                <div className="space-y-2">
+                  <Label>Permission Inheritance</Label>
+                  <div className="p-3 bg-blue-50 rounded border text-blue-700 text-sm">
+                    <p><strong>Your Role:</strong> {currentUser.role}</p>
+                    <p><strong>Your Pages:</strong> {currentUser.allowedPages?.join(', ') || 'None'}</p>
+                    <p><strong>Your Agents:</strong> {currentUser.agentIds?.length || 0} agent(s)</p>
+                    <p className="mt-2 text-xs">
+                      New users will inherit your permissions or less, based on their role.
+                    </p>
+                  </div>
                 </div>
                 {/* Submit Button */}
                 <div className="flex justify-end space-x-4">

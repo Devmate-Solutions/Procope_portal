@@ -351,11 +351,11 @@ export async function getUsers() {
 }
 
 export async function createUser(userData: {
-  user_email: string;
-  display_name: string;
+  email: string;
+  displayName: string;
   role: string;
-  agent_ids: string[];
-  allowed_pages: string[];
+  agentIds: string[];
+  allowedPages: string[];
   password?: string;
 }) {
   try {
