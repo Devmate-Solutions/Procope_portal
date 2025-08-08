@@ -38,6 +38,7 @@ const ROLES = [
 const PAGE_TEMPLATES = [
   { value: 'basic', label: 'Basic (Dashboard, Call History)' },
   { value: 'template1', label: 'Nomad (Dashboard, Analytics, Outbound, User Mgmt)' },
+  { value: 'template2', label: 'Usman (Dashboard, Analytics, Outbound, User Mgmt)' },
   { value: 'scribe', label: 'Scribe (+ AI Transcription)' },
   { value: 'claims', label: 'Claims (+ Insurance Processing)' },
   { value: 'usermanage', label: 'User Management Only' }
@@ -263,6 +264,7 @@ export default function UserManagementPage() {
       'claims-archive': 'Claims Archive',
       'basic': 'Basic Access',
       'template1': 'All Access',
+      'template2': 'All Access',
       'usermanage': 'User Management Only'
     }
     return pageLabels[page] || page.charAt(0).toUpperCase() + page.slice(1)

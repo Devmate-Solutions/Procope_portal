@@ -74,6 +74,13 @@ export default function CreateCallsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'called' | 'not-called' | 'failed'>('all')
 
+  // Patient history for template2 users
+  const [template2Patients, setTemplate2Patients] = useState<any[]>([])
+  const [loadingTemplate2Patients, setLoadingTemplate2Patients] = useState(false)
+  const [filteredTemplate2Patients, setFilteredTemplate2Patients] = useState<any[]>([])
+  const [template2SearchTerm, setTemplate2SearchTerm] = useState('')
+  const [template2StatusFilter, setTemplate2StatusFilter] = useState<'all' | 'called' | 'not-called' | 'failed'>('all')
+
   const currentUser = getCurrentUser()
   
   // Debug logging
@@ -82,8 +89,10 @@ export default function CreateCallsPage() {
   
   // Check if user has template1 access (which should hide single call creation)
   const isTemplate1User = currentUser?.allowedPages?.includes('template1')
+  const isTemplate2User = currentUser?.allowedPages?.includes('template2')
   
   console.log('🔍 Is Template1 User:', isTemplate1User)
+  console.log('🔍 Is Template2 User:', isTemplate2User)
 
   useEffect(() => {
     loadAgentsAndPhoneNumbers()
@@ -93,7 +102,13 @@ export default function CreateCallsPage() {
       setActiveTab('csv')
       loadPatientHistory()
     }
-  }, [isTemplate1User])
+    // If template2 user, default to CSV import tab and load template2 patient history
+    if (isTemplate2User) {
+      console.log('📝 Setting default tab to CSV for template2 user')
+      setActiveTab('csv')
+      loadTemplate2PatientHistory()
+    }
+  }, [isTemplate1User, isTemplate2User])
 
   // Filter patients based on search term and status
   useEffect(() => {
@@ -122,6 +137,32 @@ export default function CreateCallsPage() {
     setFilteredPatients(filtered)
   }, [patients, searchTerm, statusFilter])
 
+  // Filter template2 patients based on search term and status
+  useEffect(() => {
+    let filtered = template2Patients
+
+    // Filter by search term (name, phone)
+    if (template2SearchTerm) {
+      filtered = filtered.filter(patient => 
+        `${patient.firstName} ${patient.lastName}`.toLowerCase().includes(template2SearchTerm.toLowerCase()) ||
+        (patient.phoneNumber && patient.phoneNumber.includes(template2SearchTerm)) ||
+        (patient.patient_id && patient.patient_id.toLowerCase().includes(template2SearchTerm.toLowerCase()))
+      )
+    }
+
+    // Filter by status
+    if (template2StatusFilter !== 'all') {
+      filtered = filtered.filter(patient => {
+        if (template2StatusFilter === 'called') return patient.Call_Status === 'called'
+        if (template2StatusFilter === 'not-called') return patient.Call_Status === 'not-called' || !patient.Call_Status
+        if (template2StatusFilter === 'failed') return patient.Call_Status === 'failed'
+        return true
+      })
+    }
+
+    setFilteredTemplate2Patients(filtered)
+  }, [template2Patients, template2SearchTerm, template2StatusFilter])
+
   const loadPatientHistory = async () => {
     if (!isTemplate1User) return
     
@@ -148,6 +189,35 @@ export default function CreateCallsPage() {
       console.error('Error loading patient history:', error)
     } finally {
       setLoadingPatients(false)
+    }
+  }
+
+  const loadTemplate2PatientHistory = async () => {
+    if (!isTemplate2User) return
+    
+    try {
+      setLoadingTemplate2Patients(true)
+      const response = await fetch('https://n8yh3flwsc.execute-api.us-east-1.amazonaws.com/prod/api/anesthesia/patients', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'query'
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setTemplate2Patients(data.patients || [])
+        console.log('📋 Loaded template2 patient history:', data.patients?.length || 0, 'patients')
+      } else {
+        console.error('Failed to load template2 patient history')
+      }
+    } catch (error) {
+      console.error('Error loading template2 patient history:', error)
+    } finally {
+      setLoadingTemplate2Patients(false)
     }
   }
 
@@ -415,6 +485,7 @@ export default function CreateCallsPage() {
       console.log('📄 Raw CSV lines:', lines)
       console.log('📋 Parsed headers:', headers)
       console.log('👤 Is Template1 User:', isTemplate1User)
+      console.log('👤 Is Template2 User:', isTemplate2User)
       
       if (isTemplate1User) {
         // Template1 users: Process patient data format and make calls directly
@@ -670,6 +741,245 @@ export default function CreateCallsPage() {
         // Clear CSV data after successful processing
         setCsvData('')
         
+      } else if (isTemplate2User) {
+        // Template2 users: Process anesthesia patient data format and make calls directly
+        // Check for flexible header variations for template2 format
+        const phoneNumberHeader = headers.find(h => 
+          h === 'phonenumber' || h === 'phone number' || h === 'phone_number'
+        )
+        const firstNameHeader = headers.find(h => 
+          h === 'firstname' || h === 'first name' || h === 'first_name'
+        )
+        const lastNameHeader = headers.find(h => 
+          h === 'lastname' || h === 'last name' || h === 'last_name'
+        )
+        
+        console.log('🔍 Template2 Header matching:')
+        console.log('📞 Phone header found:', phoneNumberHeader)
+        console.log('👤 First name header found:', firstNameHeader)
+        console.log('👤 Last name header found:', lastNameHeader)
+        
+        if (!phoneNumberHeader || !firstNameHeader || !lastNameHeader) {
+          setError(`Missing required headers for Template2. Found: ${headers.join(', ')}\nRequired: firstName, lastName, phone number\n\nPhone header: ${phoneNumberHeader}\nFirst name header: ${firstNameHeader}\nLast name header: ${lastNameHeader}`)
+          setIsLoading(false)
+          return
+        }
+
+        const calls: CallData[] = []
+        
+        console.log('🔍 Processing Template2 data rows...')
+        
+        for (let i = 1; i < lines.length; i++) {
+          console.log(`📝 Processing Template2 row ${i}:`, lines[i])
+          
+          // Proper CSV parsing that handles quoted values with commas
+          const values = parseCSVRow(lines[i])
+          console.log('📊 Split values:', values)
+          console.log('📏 Values length:', values.length, 'Headers length:', headers.length)
+          
+          if (values.length !== headers.length) {
+            console.log('⚠️ Skipping row - length mismatch')
+            continue
+          }
+          
+          const patientData: any = {}
+          
+          // Map CSV headers to patient data
+          headers.forEach((header, index) => {
+            const value = values[index]
+            patientData[header] = value
+          })
+          
+          console.log('👤 Template2 Patient data mapped:', patientData)
+          
+          // Get phone number from flexible header
+          const phoneNumber = patientData[phoneNumberHeader]
+          console.log('📞 Phone number extracted:', phoneNumber)
+          
+          // Skip if no phone number
+          if (!phoneNumber) {
+            console.log('⚠️ Skipping row - no phone number')
+            continue
+          }
+          
+          // Get names from flexible headers
+          const firstName = patientData[firstNameHeader]
+          const lastName = patientData[lastNameHeader]
+          
+          // Check call status - only process "not-called" patients
+          const callStatusHeader = headers.find(h => 
+            h === 'callstatus' || h === 'call status' || h === 'call_status'
+          )
+          const callStatus = callStatusHeader ? patientData[callStatusHeader] : ''
+          
+          if (callStatus && callStatus.toLowerCase() === 'called') {
+            console.log('⚠️ Skipping row - patient already called:', firstName, lastName)
+            continue
+          }
+          
+          // Format phone number (remove non-digits and add +)
+          const cleanPhone = phoneNumber.replace(/\D/g, '')
+          const formattedPhone = cleanPhone.startsWith('1') ? `+${cleanPhone}` : `+1${cleanPhone}`
+          
+          // Map to retell_llm_dynamic_variables for template2 with anesthesia fields
+          const dynamicVars: any = {}
+          if (firstName) dynamicVars.firstName = firstName
+          if (lastName) dynamicVars.lastName = lastName
+          
+          // Map template2 specific fields
+          const dobHeader = headers.find(h => h === 'dob' || h === 'date of birth' || h === 'dateofbirth')
+          if (dobHeader && patientData[dobHeader]) dynamicVars.DOB = patientData[dobHeader]
+          
+          if (phoneNumber) dynamicVars.phoneNumber = phoneNumber
+          
+          const postAnesthesiaNotesHeader = headers.find(h => 
+            h === 'postanesthesia_notes' || h === 'post anesthesia notes' || h === 'postanesthesianotes'
+          )
+          if (postAnesthesiaNotesHeader && patientData[postAnesthesiaNotesHeader]) {
+            dynamicVars.postAnesthesia_Notes = patientData[postAnesthesiaNotesHeader]
+          }
+          
+          const postAnesthesiaPrescriptionHeader = headers.find(h => 
+            h === 'postanesthesia_prescription' || h === 'post anesthesia prescription' || h === 'postanesthesiaprescription'
+          )
+          if (postAnesthesiaPrescriptionHeader && patientData[postAnesthesiaPrescriptionHeader]) {
+            dynamicVars.postAnesthesia_Prescription = patientData[postAnesthesiaPrescriptionHeader]
+          }
+          
+          // Use the already declared callStatusHeader variable
+          if (callStatusHeader && patientData[callStatusHeader]) {
+            dynamicVars.Call_Status = patientData[callStatusHeader]
+          }
+          
+          const followUpNotesHeader = headers.find(h => 
+            h === 'followupnotes' || h === 'followup_notes' || h === 'follow up notes' || h === 'followup notes'
+          )
+          if (followUpNotesHeader && patientData[followUpNotesHeader]) {
+            dynamicVars.followUp_Notes = patientData[followUpNotesHeader]
+          }
+          
+          const followUpDateHeader = headers.find(h => 
+            h === 'followupdate' || h === 'followup_date' || h === 'follow up date' || h === 'followup date'
+          )
+          if (followUpDateHeader && patientData[followUpDateHeader]) {
+            dynamicVars.followUp_Date = patientData[followUpDateHeader]
+          }
+          
+          const postFollowupStatusHeader = headers.find(h => 
+            h === 'postfollowupstatus' || h === 'postfollowup_status' || h === 'post followup status' || h === 'post followup_status'
+          )
+          if (postFollowupStatusHeader && patientData[postFollowupStatusHeader]) {
+            dynamicVars.postFollowup_Status = patientData[postFollowupStatusHeader]
+          }
+          
+          // Find outbound agent dynamically
+          const outboundAgent = agents.find(agent => agent.type === 'outbound')
+          const outboundPhone = phoneNumbers.find(phone => phone.hasOutbound)
+          
+          const call: CallData = {
+            from_number: outboundPhone?.phoneNumber || '+19728338727', // Dynamic outbound phone
+            to_number: formattedPhone,
+            agent_id: outboundAgent?.agent_id || 'agent_8f58e11e169672fd4d55563b4f', // Dynamic outbound agent
+            customer_name: `${firstName || ''} ${lastName || ''}`.trim(),
+            metadata: {
+              ...dynamicVars,
+              isTemplate2: true,
+              patientData: patientData
+            }
+          }
+          
+          calls.push(call)
+        }
+        
+        if (calls.length === 0) {
+          setError('No valid Template2 patient records found in CSV')
+          setIsLoading(false)
+          return
+        }
+
+        // Directly make the calls for template2 users
+        console.log('📞 Processing', calls.length, 'Template2 patient calls directly from CSV')
+        
+        // Format calls for API
+        const formattedCalls = calls.map(call => {
+          const { patientData, isTemplate2, ...dynamicVars } = call.metadata || {}
+          
+          return {
+            from_number: call.from_number,
+            to_number: call.to_number,
+            override_agent_id: call.agent_id,
+            override_agent_version: 1,
+            retell_llm_dynamic_variables: dynamicVars,
+            metadata: {}
+          }
+        })
+
+        const result = await createBatchCalls(formattedCalls)
+        
+        // After successful batch calls, update template2 patient database
+        if (result.summary && result.summary.successful > 0) {
+          try {
+            // Prepare patient updates for anesthesia API with correct field mapping
+            const patientUpdates = calls
+              .filter(call => call.metadata?.patientData)
+              .map(call => {
+                const patientData = call.metadata?.patientData
+                
+                // Map CSV fields to Template2 API expected fields
+                return {
+                  firstName: patientData.firstname || patientData['firstname'] || '',
+                  lastName: patientData.lastname || patientData['lastname'] || '',
+                  DOB: patientData.dob || patientData['dob'] || '',
+                  phoneNumber: (patientData.phonenumber || patientData['phone number'] || '').replace(/\D/g, ''), // Remove non-digits
+                  postAnesthesia_Notes: patientData.postanesthesia_notes || patientData['postanesthesia_notes'] || '',
+                  postAnesthesia_Prescription: patientData.postanesthesia_prescription || patientData['postanesthesia_prescription'] || '',
+                  Call_Status: 'called',
+                  followUp_Notes: patientData.followup_notes || patientData['followup_notes'] || '',
+                  followUp_Date: patientData.followup_date || patientData['followup_date'] || '',
+                  postFollowup_Status: patientData.postfollowup_status || patientData['postfollowup_status'] || ''
+                }
+              })
+
+            if (patientUpdates.length > 0) {
+              console.log('📝 Updating Template2 patient database with correct format:', patientUpdates)
+              
+              for (const patientUpdate of patientUpdates) {
+                const updateResponse = await fetch('https://n8yh3flwsc.execute-api.us-east-1.amazonaws.com/prod/api/anesthesia/patients', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    action: 'manage',
+                    data: [patientUpdate]
+                  }),
+                })
+
+                if (!updateResponse.ok) {
+                  console.warn('Failed to update Template2 patient:', patientUpdate)
+                } else {
+                  const result = await updateResponse.json()
+                  console.log('✅ Template2 Patient update result:', result)
+                }
+              }
+              
+              setSuccess(`✅ Template2 Calls completed successfully!\n📞 ${result.summary.successful}/${result.summary.total} calls created\n📝 Patient database updated for ${patientUpdates.length} patients`)
+            } else {
+              setSuccess(`✅ Template2 Calls completed successfully!\n📞 ${result.summary.successful}/${result.summary.total} calls created`)
+            }
+          } catch (updateError) {
+            console.error('Failed to update Template2 patient database:', updateError)
+            setSuccess(`✅ Template2 Calls completed successfully!\n📞 ${result.summary.successful}/${result.summary.total} calls created\n⚠️ Warning: Patient database update failed`)
+          }
+        }
+        
+        if (result.failed_calls && result.failed_calls.length > 0) {
+          setError(`Some Template2 calls failed: ${result.failed_calls.map((f: any) => f.error).join(', ')}`)
+        }
+
+        // Clear CSV data after successful processing
+        setCsvData('')
+        
       } else {
         // Regular users: Process standard call format and show in batch tab
         const requiredHeaders = ['from_number', 'to_number', 'agent_id']
@@ -750,8 +1060,12 @@ export default function CreateCallsPage() {
     
     if (isTemplate1User) {
       // Template1 users get patient data CSV format - matching user's exact format
-      template = `firstName,lastName,DOB,phone number,Treatment,postTreatment_Notes,postTreatment_Prescription,followUp_Appointment,Call Status,followUp_Notes,followUp_Date,postFollowup_Status\n
+      template = `firstName,lastName,DOB,phone number,Treatment,postTreatment_Notes,postTreatment_Prescription,followUp_Appointment,Call Status,followUp_Notes,followUp_Date,postFollowup_Status
 Ayaz,Momin,03/20/1983,96896466583,teeth cleaning,care needed on bottom left tooth,prescribed mouth wash,"06/07/2025 , 02:00 CST",not-called,[Call Summary],[Calling Date & Time],[Call Picked/ Not Picked etc]`
+    } else if (isTemplate2User) {
+      // Template2 users get anesthesia patient data CSV format
+      template = `firstName,lastName,DOB,phone number,postAnesthesia_Notes,postAnesthesia_Prescription,Call Status,followUp_Notes,followUp_Date,postFollowup_Status
+Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat cold items,not-called,[Call Summary],[Calling Date & Time],[Call Picked/ Not Picked etc]`
     } else {
       // Regular users get standard call format
       template = 'from_number,to_number,agent_id,customer_name\n+1234567890,+0987654321,agent_123,John Doe'
@@ -761,7 +1075,7 @@ Ayaz,Momin,03/20/1983,96896466583,teeth cleaning,care needed on bottom left toot
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = isTemplate1User ? 'patient_template.csv' : 'call_template.csv'
+    a.download = isTemplate1User ? 'patient_template.csv' : isTemplate2User ? 'anesthesia_template.csv' : 'call_template.csv'
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -825,9 +1139,9 @@ Ayaz,Momin,03/20/1983,96896466583,teeth cleaning,care needed on bottom left toot
           </Card>
         )}
 
-        {/* Tab Navigation - Hide Single Call tab for template1 users */}
+        {/* Tab Navigation - Hide Single Call tab for template users */}
         <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg w-fit">
-          {!isTemplate1User && (
+          {!isTemplate1User && !isTemplate2User && (
             <button
               onClick={() => setActiveTab('single')}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -849,6 +1163,17 @@ Ayaz,Momin,03/20/1983,96896466583,teeth cleaning,care needed on bottom left toot
               }`}
             >
               Patient History ({patients.length})
+            </button>
+          ) : isTemplate2User ? (
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'history' 
+                  ? 'bg-white text-gray-900 shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Patient History ({template2Patients.length})
             </button>
           ) : (
             <button
@@ -1329,6 +1654,237 @@ Ayaz,Momin,03/20/1983,96896466583,teeth cleaning,care needed on bottom left toot
           </Card>
         )}
 
+        {/* Patient History Tab - For Template2 users */}
+        {isTemplate2User && activeTab === 'history' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <PhoneCall className="h-5 w-5" />
+                  Template2 Patient History ({template2Patients.length})
+                </div>
+                <Button variant="outline" onClick={loadTemplate2PatientHistory} disabled={loadingTemplate2Patients}>
+                  {loadingTemplate2Patients ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
+                      Loading...
+                    </>
+                  ) : (
+                    'Refresh'
+                  )}
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {/* Search and Filter Controls */}
+              <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Input
+                      placeholder="Search by name, phone, or patient ID..."
+                      value={template2SearchTerm}
+                      onChange={(e) => setTemplate2SearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                <div className="w-full sm:w-48">
+                  <Select value={template2StatusFilter} onValueChange={(value: any) => setTemplate2StatusFilter(value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Filter by status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Patients</SelectItem>
+                      <SelectItem value="called">Called</SelectItem>
+                      <SelectItem value="not-called">Not Called</SelectItem>
+                      <SelectItem value="failed">Failed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {loadingTemplate2Patients ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto mb-2"></div>
+                  <p className="text-muted-foreground">Loading template2 patient history...</p>
+                </div>
+              ) : filteredTemplate2Patients.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <PhoneCall className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>{template2Patients.length === 0 ? 'No patient records found' : 'No patients match your search criteria'}</p>
+                  {template2SearchTerm && (
+                    <Button variant="outline" onClick={() => setTemplate2SearchTerm('')} className="mt-2">
+                      Clear Search
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="w-full max-w-full overflow-hidden">
+                  {/* Enhanced Horizontal Scroll Container - Table Only */}
+                  <div 
+                    className="patient-history-scroll overflow-x-auto overflow-y-auto max-h-[500px] border border-gray-200 rounded-lg"
+                    style={{
+                      scrollbarWidth: 'auto' as any,
+                      scrollbarColor: '#DC2626 #F3F4F6',
+                      maxWidth: '100%'
+                    }}
+                  >
+                    <style dangerouslySetInnerHTML={{
+                      __html: `
+                        .patient-history-scroll {
+                          scrollbar-width: thick !important;
+                          scrollbar-color: #DC2626 #F3F4F6 !important;
+                        }
+                        .patient-history-scroll::-webkit-scrollbar {
+                          width: 16px !important;
+                          height: 16px !important;
+                          display: block !important;
+                        }
+                        .patient-history-scroll::-webkit-scrollbar-track {
+                          background: #F3F4F6 !important;
+                          border-radius: 8px !important;
+                          border: 1px solid #E5E7EB !important;
+                        }
+                        .patient-history-scroll::-webkit-scrollbar-thumb {
+                          background: #DC2626 !important;
+                          border-radius: 8px !important;
+                          border: 2px solid #F3F4F6 !important;
+                          min-height: 40px !important;
+                          min-width: 40px !important;
+                        }
+                        .patient-history-scroll::-webkit-scrollbar-thumb:hover {
+                          background: #B91C1C !important;
+                        }
+                        .patient-history-scroll::-webkit-scrollbar-thumb:active {
+                          background: #991B1B !important;
+                        }
+                        .patient-history-scroll::-webkit-scrollbar-corner {
+                          background: #F3F4F6 !important;
+                        }
+                        /* Force scrollbars to always be visible */
+                        .patient-history-scroll::-webkit-scrollbar-track:horizontal {
+                          display: block !important;
+                        }
+                        .patient-history-scroll::-webkit-scrollbar-track:vertical {
+                          display: block !important;
+                        }
+                      `
+                    }} />
+                    <table className="w-full border-collapse text-sm" style={{ minWidth: '1200px' }}>
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Patient ID</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">First Name</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Last Name</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[90px]">DOB</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[100px]">Phone Number</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[120px]">Post Anesthesia Notes</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[120px]">Post Anesthesia Prescription</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Call Status</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[120px]">Follow Up Notes</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[100px]">Follow Up Date</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[100px]">Post Followup Status</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Created At</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Updated At</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredTemplate2Patients.map((patient, index) => (
+                        <tr key={`template2-patient-${patient.patient_id || index}`} className="hover:bg-gray-50">
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-xs text-gray-600">
+                              {patient.patient_id || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="font-medium text-gray-900">
+                              {patient.firstName || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="font-medium text-gray-900">
+                              {patient.lastName || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-gray-700">
+                              {patient.DOB || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="font-medium text-gray-900">
+                              {patient.phoneNumber || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-gray-700 whitespace-pre-wrap break-words max-w-[200px]">
+                              {patient.postAnesthesia_Notes || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-gray-700 whitespace-pre-wrap break-words max-w-[200px]">
+                              {patient.postAnesthesia_Prescription || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <Badge 
+                              variant={patient.Call_Status === 'called' ? 'default' : 'secondary'}
+                              className={
+                                patient.Call_Status === 'called' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : patient.Call_Status === 'failed'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }
+                            >
+                              {patient.Call_Status === 'called' ? '✅ Called' : 
+                               patient.Call_Status === 'failed' ? '❌ Failed' : '⏳ Not Called'}
+                            </Badge>
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-gray-700 whitespace-pre-wrap break-words max-w-[200px]">
+                              {patient.followUp_Notes || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-gray-700">
+                              {patient.followUp_Date || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-gray-700">
+                              {patient.postFollowup_Status || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-xs text-gray-500">
+                              {patient.created_at ? new Date(patient.created_at).toLocaleDateString() : 'N/A'}
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-xs text-gray-500">
+                              {patient.updated_at ? new Date(patient.updated_at).toLocaleDateString() : 'N/A'}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    </table>
+                  </div>
+                  
+                  {/* Results Summary */}
+                  <div className="mt-4 text-sm text-gray-500 text-center">
+                    Showing {filteredTemplate2Patients.length} of {template2Patients.length} patients
+                    {template2SearchTerm && ` matching "${template2SearchTerm}"`}
+                    {template2StatusFilter !== 'all' && ` with status "${template2StatusFilter}"`}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* CSV Import Tab */}
         {activeTab === 'csv' && (
           <Card>
@@ -1388,7 +1944,11 @@ Ayaz,Momin,03/20/1983,96896466583,teeth cleaning,care needed on bottom left toot
                   placeholder={isTemplate1User ? 
                     `firstName,lastName,DOB,phoneNumber,Treatment,postTreatment_Notes,postTreatment_Prescription,followUpAppointment,callStatus,followUpNotes,followUpDate,postFollowupStatus
 John,Smith,01/15/1985,+15551234567,dental cleaning,routine checkup completed,fluoride treatment recommended,"03/15/2025 , 10:00 AM",not-called,follow up in 6 months,03/15/2025,pending
-Jane,Doe,05/22/1990,+15559876543,cavity filling,filled upper molar,pain medication prescribed,"02/28/2025 , 02:30 PM",not-called,check healing progress,02/28/2025,pending` :
+Jane,Doe,05/22/1990,+15559876543,cavity filling,filled upper molar,pain medication prescribed,"02/28/2025 , 02:30 PM",not-called,check healing progress,02/28/2025,pending` : 
+                    isTemplate2User ?
+                    `firstName,lastName,DOB,phoneNumber,postAnesthesia_Notes,postAnesthesia_Prescription,callStatus,followUpNotes,followUpDate,postFollowupStatus
+Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat cold items,not-called,[Call Summary],[Calling Date & Time],[Call Picked/ Not Picked etc]
+John,Smith,15/8/1990,15551234567,administered local anesthesia,avoid hot foods for 24 hours,not-called,[Call Summary],[Calling Date & Time],[Call Picked/ Not Picked etc]` :
                     `from_number,to_number,agent_id,customer_name
 +1234567890,+0987654321,agent_123,John Doe
 +1234567891,+0987654322,agent_123,Jane Smith`
@@ -1403,6 +1963,11 @@ Jane,Doe,05/22/1990,+15559876543,cavity filling,filled upper molar,pain medicati
                   <>
                     <p><strong>Required columns:</strong> firstName, lastName, phoneNumber</p>
                     <p><strong>Optional columns:</strong> DOB, Treatment, postTreatment_Notes, postTreatment_Prescription, followUpAppointment, callStatus, followUpNotes, followUpDate, postFollowupStatus</p>
+                  </>
+                ) : isTemplate2User ? (
+                  <>
+                    <p><strong>Required columns:</strong> firstName, lastName, phoneNumber</p>
+                    <p><strong>Optional columns:</strong> DOB, postAnesthesia_Notes, postAnesthesia_Prescription, callStatus, followUpNotes, followUpDate, postFollowupStatus</p>
                   </>
                 ) : (
                   <>

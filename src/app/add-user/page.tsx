@@ -32,7 +32,8 @@ interface AddUserForm {
 
 const PAGE_TEMPLATES = [
   { value: 'basic', label: 'Basic (Dashboard, Call History, Create Calls, Analytics)' },
-  { value: 'template1', label: 'Template 1 (Dashboard, Analytics, Outbound, User Mgmt)' },
+  { value: 'template1', label: 'Nomad (Dashboard, Analytics, Outbound, User Mgmt)' },
+  { value: 'template2', label: 'Usman  (Dashboard, Analytics, Outbound, User Mgmt)' },
   { value: 'scribe', label: 'Scribe (+ AI Transcription)' },
   { value: 'claims', label: 'Claims (+ Insurance Processing)' },
   { value: 'usermanage', label: 'User Management Only' }
@@ -166,11 +167,11 @@ export default function AddUserPage() {
 
       // Create user using AWS API
       const result = await createUser({
-        user_email: formData.user_email,
-        display_name: formData.display_name,
+        email: formData.user_email,
+        displayName: formData.display_name,
         role: formData.role,
-        agent_ids: finalAgentIds,
-        allowed_pages: finalAllowedPages,
+        agentIds: finalAgentIds,
+        allowedPages: finalAllowedPages,
         password: formData.password,
       });
 

@@ -21,6 +21,7 @@ export interface UserProfile {
 // Page access mapping for template-based access
 export const PAGE_ACCESS_TEMPLATES = {
   template1: [ 'dashboard', 'call-history', 'analytics', 'create-calls', 'user-management'],
+  template2: [ 'dashboard', 'call-history', 'analytics', 'create-calls', 'user-management'],
   basic: ['dashboard', 'call-history',  'create-calls','analytics'],
   scribe: ['scribe', 'scribe-history'],
   claims: [ 'call-history', 'claims-archive'],
