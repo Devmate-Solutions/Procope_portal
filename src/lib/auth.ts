@@ -24,7 +24,7 @@ export const PAGE_ACCESS_TEMPLATES = {
   template2: [ 'dashboard', 'call-history', 'analytics', 'create-calls', 'user-management'],
   basic: ['dashboard', 'call-history',  'create-calls','analytics'],
   scribe: ['scribe', 'scribe-history'],
-  claims: [ 'call-history', 'claims-archive'],
+  claims: [  'claims-archive','claims-submit'],
   usermanage: ['user-management']
 };
 // export const PAGE_ACCESS_TEMPLATES = {

@@ -200,10 +200,10 @@ export default function PDFExtractorPage() {
           <CardHeader className="bg-gradient-to-r  bg-[#1F4280] p-3 text-white">
             <CardTitle className="text-2xl flex items-center gap-2">
               <FileText className="w-6 h-6" />
-              PDF Text Extractor
+              Claim Parser 
             </CardTitle>
             <CardDescription className="text-blue-100">
-              Upload PDFs and extract text using AI-powered processing
+              Upload PDFs and get Claims done using AI-powered processing
             </CardDescription>
           </CardHeader>
 

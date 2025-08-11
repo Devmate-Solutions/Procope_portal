@@ -69,6 +69,12 @@ export function Sidebar({ className }: SidebarProps) {
       requiredPage: 'scribe-history'
     },
     {
+      name: 'Submit Claims',
+      href: '/pdf-extractor',
+      icon: Archive,
+      requiredPage: 'claims-submit'
+    },
+    {
       name: 'Claims Archive',
       href: '/claims-archive',
       icon: Archive,
