@@ -1586,7 +1586,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                            
                             <th className="w-[130px] px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-100">
                               <div className="flex items-center space-x-1">
-                                <span>Post Status</span>
+                                <span>Post Call Status</span>
                               </div>
                             </th>
                             <th className="w-[120px] px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
@@ -1636,26 +1636,26 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                              
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700 truncate" title={patient.Treatment || "N/A"}>
-                                  {patient.Treatment || "N/A"}
+                                  {patient.Call_Status || "N/A"}
                             </div>
                           </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700">
-                                  <div className="truncate" title={patient.postTreatment_Notes || "N/A"}>
-                                    {patient.postTreatment_Notes
-                                      ? String(patient.postTreatment_Notes).length > 40
-                                        ? `${String(patient.postTreatment_Notes).substring(0, 40)}...`
-                                        : String(patient.postTreatment_Notes)
+                                  <div className="truncate" title={patient.Treatment || "N/A"}>
+                                    {patient.Treatment
+                                      ? String(patient.Treatment).length > 40
+                                        ? `${String(patient.Treatment).substring(0, 40)}...`
+                                        : String(patient.Treatment)
                                       : "N/A"}
                                   </div>
-                                  {patient.postTreatment_Notes && String(patient.postTreatment_Notes).length > 40 && (
+                                  {patient.Treatment && String(patient.Treatment).length > 40 && (
                                     <button
                                       type="button"
                                       className="text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1 flex items-center space-x-1"
                                       onClick={() =>
                                         openNotesDialog(
                                           `Post Treatment Notes - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
-                                          String(patient.postTreatment_Notes),
+                                          String(patient.Treatment),
                                         )
                                       }
                                     >
@@ -1667,22 +1667,22 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                           </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700">
-                                  <div className="truncate" title={patient.postTreatment_Prescription || "N/A"}>
-                                    {patient.postTreatment_Prescription
-                                      ? String(patient.postTreatment_Prescription).length > 40
-                                        ? `${String(patient.postTreatment_Prescription).substring(0, 40)}...`
-                                        : String(patient.postTreatment_Prescription)
+                                  <div className="truncate" title={patient.postTreatment_Notes || "N/A"}>
+                                    {patient.postTreatment_Notes
+                                      ? String(patient.postTreatment_Notes).length > 40
+                                        ? `${String(patient.postTreatment_Notes).substring(0, 40)}...`
+                                        : String(patient.postTreatment_Notes)
                                       : "N/A"}
                                   </div>
-                                  {patient.postTreatment_Prescription &&
-                                    String(patient.postTreatment_Prescription).length > 40 && (
+                                  {patient.postTreatment_Notes &&
+                                    String(patient.postTreatment_Notes).length > 40 && (
                                       <button
                                         type="button"
                                         className="text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1 flex items-center space-x-1"
                                         onClick={() =>
                                           openNotesDialog(
                                             `Prescription - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
-                                            String(patient.postTreatment_Prescription),
+                                            String(patient.postTreatment_Notes),
                                           )
                                         }
                                       >
@@ -1695,9 +1695,9 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div
                                   className="text-sm text-gray-700 truncate"
-                                  title={patient.followUp_Appointment || "N/A"}
+                                  title={patient.postTreatment_Prescription || "N/A"}
                                 >
-                                  {patient.followUp_Appointment || "N/A"}
+                                  {patient.postTreatment_Prescription || "N/A"}
                             </div>
                           </td>
                               <td className="px-4 py-3 border-r border-gray-100">
@@ -1729,9 +1729,9 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div
                                   className="text-sm text-gray-700 truncate"
-                                  title={patient.updated_at ? new Date(patient.updated_at).toLocaleDateString() : "N/A"}
+                                  title={patient.updated_at ? new Date(patient.updated_at).toLocaleString() : "N/A"}
                                 >
-                                  {patient.updated_at ? new Date(patient.updated_at).toLocaleDateString() : "N/A"}
+                                  {patient.updated_at ? new Date(patient.updated_at).toLocaleString() : "N/A"}
                             </div>
                           </td>
                               <td className="px-4 py-3 border-r border-gray-100">
