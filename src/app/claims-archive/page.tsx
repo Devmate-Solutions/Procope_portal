@@ -62,7 +62,7 @@ export default function ClaimsArchivePage() {
     setError(null);
     
     try {
-      const response = await fetch('http://107.21.36.145:5000/claims');
+      const response = await fetch('https://mydent.duckdns.org:5000/claims');
       
       if (!response.ok) {
         throw new Error(`Failed to fetch claims: ${response.status}`);
