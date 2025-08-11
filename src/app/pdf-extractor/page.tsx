@@ -11,15 +11,14 @@ import { Upload, FileText, Copy, Download, CheckCircle, AlertCircle, Loader2 } f
 import { AuthenticatedLayout } from "../components/AuthenticatedLayout"
 
 interface ExtractedData {
-  ocr: {
-    pageCount: number
-    textLength: number
-    fullText: string
+  claim_data: {
+    date_of_birth: string
+    date_of_service: string
+    delta_dental_pay: string
+    first_name: string
+    last_name: string
   }
-  upload: {
-    size: number
-    filename: string
-  }
+  success: boolean
 }
 
 export default function PDFExtractorPage() {
@@ -116,9 +115,9 @@ export default function PDFExtractorPage() {
 
     try {
       const formData = new FormData()
-      formData.append("pdf", selectedFile)
+      formData.append("file", selectedFile)
 
-      const response = await fetch("/api/upload", {
+      const response = await fetch("http://107.21.36.145:5000/upload", {
         method: "POST",
         body: formData,
       })
@@ -128,18 +127,17 @@ export default function PDFExtractorPage() {
       setProgress(100)
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Failed to extract text from PDF")
+        throw new Error("Failed to upload and process PDF")
       }
 
       const data = await response.json()
 
       if (data.success) {
-        setExtractedData(data.data)
+        setExtractedData(data)
         setProcessingMessage("Processing completed successfully!")
-        showStatus("Text extraction completed successfully!", "success")
+        showStatus("Claim data extracted successfully!", "success")
       } else {
-        throw new Error(data.error || "Text extraction failed")
+        throw new Error("Claim extraction failed")
       }
     } catch (error) {
       clearInterval(progressInterval)
@@ -168,32 +166,30 @@ export default function PDFExtractorPage() {
     }
   }
 
-  const copyText = async () => {
+  const copyClaimData = async () => {
     if (extractedData) {
       try {
-        await navigator.clipboard.writeText(extractedData.ocr.fullText)
-        showStatus("Text copied to clipboard!", "success")
+        const claimText = JSON.stringify(extractedData.claim_data, null, 2)
+        await navigator.clipboard.writeText(claimText)
+        showStatus("Claim data copied to clipboard!", "success")
       } catch {
-        showStatus("Failed to copy text to clipboard", "error")
+        showStatus("Failed to copy claim data to clipboard", "error")
       }
     }
   }
 
-  const downloadText = () => {
+  const downloadClaimData = () => {
     if (extractedData) {
-      const blob = new Blob([extractedData.ocr.fullText], { type: "text/plain" })
+      const claimText = JSON.stringify(extractedData.claim_data, null, 2)
+      const blob = new Blob([claimText], { type: "application/json" })
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `extracted-text-${Date.now()}.txt`
+      a.download = `claim-data-${Date.now()}.json`
       a.click()
       URL.revokeObjectURL(url)
-      showStatus("Text file downloaded!", "success")
+      showStatus("Claim data downloaded!", "success")
     }
-  }
-
-  const getWordCount = (text: string) => {
-    return text.trim().split(/\s+/).length
   }
 
   return (
@@ -289,16 +285,67 @@ export default function PDFExtractorPage() {
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Extracting Text...
+                  Posting Claims...
                 </>
               ) : (
                 <>
                   <FileText className="w-4 h-4 mr-2" />
-                  Extract Text
+                  Post Claim Data
                 </>
               )}
             </Button>
 
+            {/* Extracted Claim Data Results */}
+            {extractedData && extractedData.success && (
+              <div className="space-y-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold text-green-800">Status Claim</h3>
+                  <div className="flex gap-2">
+                    <Button onClick={copyClaimData} size="sm" variant="outline">
+                      <Copy className="w-4 h-4 mr-2" />
+                      Copy
+                    </Button>
+                    <Button onClick={downloadClaimData} size="sm" variant="outline">
+                      <Download className="w-4 h-4 mr-2" />
+                      Download
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <div className="bg-white p-3 rounded border">
+                      <label className="text-sm font-medium text-gray-600">Patient Name</label>
+                      <p className="text-lg font-semibold">{extractedData.claim_data.first_name} {extractedData.claim_data.last_name}</p>
+                    </div>
+                    
+                    <div className="bg-white p-3 rounded border">
+                      <label className="text-sm font-medium text-gray-600">Date of Birth</label>
+                      <p className="text-lg font-semibold">{extractedData.claim_data.date_of_birth}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div className="bg-white p-3 rounded border">
+                      <label className="text-sm font-medium text-gray-600">Service Date</label>
+                      <p className="text-lg font-semibold">{extractedData.claim_data.date_of_service}</p>
+                    </div>
+                    
+                    <div className="bg-white p-3 rounded border">
+                      <label className="text-sm font-medium text-gray-600">Delta Dental Pay</label>
+                      <p className="text-lg font-semibold text-green-600">${extractedData.claim_data.delta_dental_pay}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-white p-4 rounded border">
+                  <label className="text-sm font-medium text-gray-600">Raw JSON Data</label>
+                  <pre className="mt-2 text-sm bg-gray-100 p-3 rounded overflow-x-auto">
+                    {JSON.stringify(extractedData.claim_data, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            )}
          
           </CardContent>
         </Card>

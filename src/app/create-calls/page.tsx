@@ -46,6 +46,18 @@ function parseCSVRow(row: string): string[] {
   return values
 }
 
+// Helper function to generate follow-up date in MM/DD/YYYY format
+function generateFollowUpDate(daysFromNow: number = 14): string {
+  const date = new Date()
+  date.setDate(date.getDate() + daysFromNow)
+  
+  const month = (date.getMonth() + 1).toString().padStart(2, '0')
+  const day = date.getDate().toString().padStart(2, '0')
+  const year = date.getFullYear()
+  
+  return `${month}/${day}/${year}`
+}
+
 export default function CreateCallsPage() {
   const [agents, setAgents] = useState<any[]>([])
   const [phoneNumbers, setPhoneNumbers] = useState<any[]>([])
@@ -117,9 +129,9 @@ export default function CreateCallsPage() {
     // Filter by search term (name, phone, treatment)
     if (searchTerm) {
       filtered = filtered.filter(patient => 
-        `${patient.first_name} ${patient.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        `${patient.firstName} ${patient.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (patient.phone_number && patient.phone_number.includes(searchTerm)) ||
-        (patient.treatment && patient.treatment.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (patient.Treatment && patient.Treatment.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (patient.patient_id && patient.patient_id.toLowerCase().includes(searchTerm.toLowerCase()))
       )
     }
@@ -127,9 +139,9 @@ export default function CreateCallsPage() {
     // Filter by status
     if (statusFilter !== 'all') {
       filtered = filtered.filter(patient => {
-        if (statusFilter === 'called') return patient.call_status === 'called'
-        if (statusFilter === 'not-called') return patient.call_status === 'not-called' || !patient.call_status
-        if (statusFilter === 'failed') return patient.call_status === 'failed'
+        if (statusFilter === 'called') return patient.Call_Status === 'called'
+        if (statusFilter === 'not-called') return patient.Call_Status === 'not-called' || !patient.Call_Status
+        if (statusFilter === 'failed') return patient.Call_Status === 'failed'
         return true
       })
     }
@@ -336,23 +348,24 @@ export default function CreateCallsPage() {
               .map(call => {
                 const patientData = call.metadata?.patientData
                 
-                // Map CSV fields to API expected fields
+                // Check if call was registered, if not set status to not-called
+                const callStatus = result.summary?.successful > 0 ? 'called' : 'not-called'
+                
+                // Map CSV fields to new API expected fields
                 return {
-                  call_status: 'called',
-                  first_name: patientData.firstname || patientData['firstname'] || '',
-                  last_name: patientData.lastname || patientData['lastname'] || '',
-                  date_of_birth: patientData.dob || patientData['dob'] || '',
+                  firstName: patientData.firstname || patientData['firstname'] || '',
+                  lastName: patientData.lastname || patientData['lastname'] || '',
+                  DOB: patientData.dob || patientData['dob'] || '',
                   phone_number: (patientData.phonenumber || patientData['phone number'] || '').replace(/\D/g, ''), // Remove non-digits
-                  treatment: patientData.treatment || '',
-                  post_treatment_notes: patientData.posttreatment_notes || patientData['posttreatment_notes'] || '',
-                  post_treatment_prescription: patientData.posttreatment_prescription || patientData['posttreatment_prescription'] || '',
-                  follow_up_appointment: patientData.followup_appointment || patientData['followup_appointment'] || '',
-                  post_ops_follow_up_notes: patientData.followup_notes || patientData['followup_notes'] || '',
-                  date_for_post_op_follow_up: patientData.followup_date || patientData['followup_date'] || '',
-                  post_op_call_status: patientData.postfollowup_status || patientData['postfollowup_status'] || '',
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString(),
-                  patient_id: ''
+                  Treatment: patientData.treatment || '',
+                  postTreatment_Notes: patientData.posttreatment_notes || patientData['posttreatment_notes'] || '',
+                  postTreatment_Prescription: patientData.posttreatment_prescription || patientData['posttreatment_prescription'] || '',
+                  followUp_Appointment: patientData.followup_appointment || patientData['followup_appointment'] || '',
+                  Call_Status: callStatus,
+                  followUp_Notes: patientData.followup_notes || patientData['followup_notes'] || '',
+                  followUp_Date: patientData.followup_date || patientData['followup_date'] || generateFollowUpDate(),
+                  postFollowup_Status: patientData.postfollowup_status || patientData['postfollowup_status'] || 'not-called',
+                  Feedback: ''
                 }
               })
 
@@ -361,7 +374,7 @@ export default function CreateCallsPage() {
               console.log('📝 Updating patient database with correct format:', patientUpdates)
               
               for (const patientUpdate of patientUpdates) {
-                const updateResponse = await fetch('https://n8yh3flwsc.execute-api.us-east-1.amazonaws.com/prod/api/nomads/patients', {
+                const updateResponse = await fetch('https://n8yh3flwsc.execute-api.us-east-1.amazonaws.com/prod/api/nomads/patients/lambda-endpoint', {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
@@ -681,23 +694,24 @@ export default function CreateCallsPage() {
               .map(call => {
                 const patientData = call.metadata?.patientData
                 
-                // Map CSV fields to API expected fields
+                // Check if call was registered, if not set status to not-called
+                const callStatus = result.summary?.successful > 0 ? 'called' : 'not-called'
+                
+                // Map CSV fields to new API expected fields
                 return {
-                  call_status: 'called',
-                  first_name: patientData.firstname || patientData['firstname'] || '',
-                  last_name: patientData.lastname || patientData['lastname'] || '',
-                  date_of_birth: patientData.dob || patientData['dob'] || '',
+                  firstName: patientData.firstname || patientData['firstname'] || '',
+                  lastName: patientData.lastname || patientData['lastname'] || '',
+                  DOB: patientData.dob || patientData['dob'] || '',
                   phone_number: (patientData.phonenumber || patientData['phone number'] || '').replace(/\D/g, ''), // Remove non-digits
-                  treatment: patientData.treatment || '',
-                  post_treatment_notes: patientData.posttreatment_notes || patientData['posttreatment_notes'] || '',
-                  post_treatment_prescription: patientData.posttreatment_prescription || patientData['posttreatment_prescription'] || '',
-                  follow_up_appointment: patientData.followup_appointment || patientData['followup_appointment'] || '',
-                  post_ops_follow_up_notes: patientData.followup_notes || patientData['followup_notes'] || '',
-                  date_for_post_op_follow_up: patientData.followup_date || patientData['followup_date'] || '',
-                  post_op_call_status: patientData.postfollowup_status || patientData['postfollowup_status'] || '',
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString(),
-                  patient_id: ''
+                  Treatment: patientData.treatment || '',
+                  postTreatment_Notes: patientData.posttreatment_notes || patientData['posttreatment_notes'] || '',
+                  postTreatment_Prescription: patientData.posttreatment_prescription || patientData['posttreatment_prescription'] || '',
+                  followUp_Appointment: patientData.followup_appointment || patientData['followup_appointment'] || '',
+                  Call_Status: callStatus,
+                  followUp_Notes: patientData.followup_notes || patientData['followup_notes'] || '',
+                  followUp_Date: patientData.followup_date || patientData['followup_date'] || generateFollowUpDate(),
+                  postFollowup_Status: patientData.postfollowup_status || patientData['postfollowup_status'] || 'not-called',
+                  Feedback: ''
                 }
               })
 
@@ -705,7 +719,7 @@ export default function CreateCallsPage() {
               console.log('📝 Updating patient database with correct format:', patientUpdates)
               
               for (const patientUpdate of patientUpdates) {
-                const updateResponse = await fetch('https://n8yh3flwsc.execute-api.us-east-1.amazonaws.com/prod/api/nomads/patients', {
+                const updateResponse = await fetch('https://n8yh3flwsc.execute-api.us-east-1.amazonaws.com/prod/api/nomads/patients/lambda-endpoint', {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
@@ -892,7 +906,7 @@ export default function CreateCallsPage() {
         }
         
         if (calls.length === 0) {
-          setError('No valid Template2 patient records found in CSV')
+          setError('No valid patient records found in CSV')
           setIsLoading(false)
           return
         }
@@ -925,18 +939,23 @@ export default function CreateCallsPage() {
               .map(call => {
                 const patientData = call.metadata?.patientData
                 
+                // Check if call was registered, if not set status to not-called
+                const callStatus = result.summary?.successful > 0 ? 'called' : 'not-called'
+                
                 // Map CSV fields to Template2 API expected fields
                 return {
                   firstName: patientData.firstname || patientData['firstname'] || '',
                   lastName: patientData.lastname || patientData['lastname'] || '',
                   DOB: patientData.dob || patientData['dob'] || '',
-                  phoneNumber: (patientData.phonenumber || patientData['phone number'] || '').replace(/\D/g, ''), // Remove non-digits
-                  postAnesthesia_Notes: patientData.postanesthesia_notes || patientData['postanesthesia_notes'] || '',
-                  postAnesthesia_Prescription: patientData.postanesthesia_prescription || patientData['postanesthesia_prescription'] || '',
-                  Call_Status: 'called',
+                  phone_number: (patientData.phonenumber || patientData['phone number'] || '').replace(/\D/g, ''), // Remove non-digits
+                  postTreatment_Notes: patientData.postanesthesia_notes || patientData['postanesthesia_notes'] || '',
+                  postTreatment_Prescription: patientData.postanesthesia_prescription || patientData['postanesthesia_prescription'] || '',
+                  followUp_Appointment: '',
+                  Call_Status: callStatus,
                   followUp_Notes: patientData.followup_notes || patientData['followup_notes'] || '',
-                  followUp_Date: patientData.followup_date || patientData['followup_date'] || '',
-                  postFollowup_Status: patientData.postfollowup_status || patientData['postfollowup_status'] || ''
+                  followUp_Date: patientData.followup_date || patientData['followup_date'] || generateFollowUpDate(),
+                  postFollowup_Status: patientData.postfollowup_status || patientData['postfollowup_status'] || 'not-called',
+                  Feedback: ''
                 }
               })
 
@@ -944,14 +963,14 @@ export default function CreateCallsPage() {
               console.log('📝 Updating Template2 patient database with correct format:', patientUpdates)
               
               for (const patientUpdate of patientUpdates) {
-                const updateResponse = await fetch('https://n8yh3flwsc.execute-api.us-east-1.amazonaws.com/prod/api/anesthesia/patients', {
+                const updateResponse = await fetch('https://n8yh3flwsc.execute-api.us-east-1.amazonaws.com/prod/api/anesthesia/patients/lambda-endpoint', {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
                   },
                   body: JSON.stringify({
                     action: 'manage',
-                    data: [patientUpdate]
+                    data: patientUpdate
                   }),
                 })
 
@@ -963,18 +982,18 @@ export default function CreateCallsPage() {
                 }
               }
               
-              setSuccess(`✅ Template2 Calls completed successfully!\n📞 ${result.summary.successful}/${result.summary.total} calls created\n📝 Patient database updated for ${patientUpdates.length} patients`)
+              setSuccess(`✅  Calls completed successfully!\n📞 ${result.summary.successful}/${result.summary.total} calls created\n📝 Patient database updated for ${patientUpdates.length} patients`)
             } else {
-              setSuccess(`✅ Template2 Calls completed successfully!\n📞 ${result.summary.successful}/${result.summary.total} calls created`)
+              setSuccess(`✅  Calls completed successfully!\n📞 ${result.summary.successful}/${result.summary.total} calls created`)
             }
           } catch (updateError) {
-            console.error('Failed to update Template2 patient database:', updateError)
-            setSuccess(`✅ Template2 Calls completed successfully!\n📞 ${result.summary.successful}/${result.summary.total} calls created\n⚠️ Warning: Patient database update failed`)
+            console.error('Failed to update  patient database:', updateError)
+            setSuccess(`✅  Calls completed successfully!\n📞 ${result.summary.successful}/${result.summary.total} calls created\n⚠️ Warning: Patient database update failed`)
           }
         }
         
         if (result.failed_calls && result.failed_calls.length > 0) {
-          setError(`Some Template2 calls failed: ${result.failed_calls.map((f: any) => f.error).join(', ')}`)
+          setError(`Some  calls failed: ${result.failed_calls.map((f: any) => f.error).join(', ')}`)
         }
 
         // Clear CSV data after successful processing
@@ -1534,16 +1553,17 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Patient ID</th>
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">First Name</th>
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Last Name</th>
-                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[90px]">Date of Birth</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[90px]">DOB</th>
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[100px]">Phone Number</th>
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Call Status</th>
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[90px]">Treatment</th>
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[120px]">Post Treatment Notes</th>
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[120px]">Post Treatment Prescription</th>
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[110px]">Follow Up Appointment</th>
-                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[120px]">Post Ops Follow Up Notes</th>
-                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[110px]">Date for Post Op Follow Up</th>
-                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[100px]">Post Op Call Status</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[120px]">Follow Up Notes</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[110px]">Follow Up Date</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[100px]">Post Followup Status</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Feedback</th>
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Created At</th>
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Updated At</th>
                       </tr>
@@ -1558,7 +1578,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                           </td>
                           <td className="border border-gray-200 px-3 py-2">
                             <div className="font-medium text-gray-900">
-                              {patient.first_name || 'N/A'}
+                              {patient.firstName || 'N/A'}
                             </div>
                           </td>
                           <td className="border border-gray-200 px-3 py-2">
@@ -1568,7 +1588,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                           </td>
                           <td className="border border-gray-200 px-3 py-2">
                             <div className="text-gray-700">
-                              {patient.date_of_birth || 'N/A'}
+                              {patient.DOB || 'N/A'}
                             </div>
                           </td>
                           <td className="border border-gray-200 px-3 py-2">
@@ -1578,52 +1598,58 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                           </td>
                           <td className="border border-gray-200 px-3 py-2">
                             <Badge 
-                              variant={patient.call_status === 'called' ? 'default' : 'secondary'}
+                              variant={patient.Call_Status === 'called' ? 'default' : 'secondary'}
                               className={
-                                patient.call_status === 'called' 
+                                patient.Call_Status === 'called' 
                                   ? 'bg-green-100 text-green-800' 
-                                  : patient.call_status === 'failed'
+                                  : patient.Call_Status === 'failed'
                                   ? 'bg-red-100 text-red-800'
                                   : 'bg-yellow-100 text-yellow-800'
                               }
                             >
-                              {patient.call_status === 'called' ? '✅ Called' : 
-                               patient.call_status === 'failed' ? '❌ Failed' : '⏳ Not Called'}
+                              {patient.Call_Status === 'called' ? '✅ Called' : 
+                               patient.Call_Status === 'failed' ? '❌ Failed' : '⏳ Not Called'}
                             </Badge>
                           </td>
                           <td className="border border-gray-200 px-3 py-2">
                             <div className="text-gray-700">
-                              {patient.treatment || 'N/A'}
+                              {patient.Treatment || 'N/A'}
                             </div>
                           </td>
                           <td className="border border-gray-200 px-3 py-2">
                             <div className="text-gray-700 whitespace-pre-wrap break-words max-w-[200px]">
-                              {patient.post_treatment_notes || 'N/A'}
+                              {patient.postTreatment_Notes || 'N/A'}
                             </div>
                           </td>
                           <td className="border border-gray-200 px-3 py-2">
                             <div className="text-gray-700 whitespace-pre-wrap break-words max-w-[200px]">
-                              {patient.post_treatment_prescription || 'N/A'}
+                              {patient.postTreatment_Prescription || 'N/A'}
                             </div>
                           </td>
                           <td className="border border-gray-200 px-3 py-2">
                             <div className="text-gray-700">
-                              {patient.follow_up_appointment || 'N/A'}
+                              {patient.followUp_Appointment || 'N/A'}
                             </div>
                           </td>
                           <td className="border border-gray-200 px-3 py-2">
                             <div className="text-gray-700 whitespace-pre-wrap break-words max-w-[200px]">
-                              {patient.post_ops_follow_up_notes || 'N/A'}
+                              {patient.followUp_Notes || 'N/A'}
                             </div>
                           </td>
                           <td className="border border-gray-200 px-3 py-2">
                             <div className="text-gray-700">
-                              {patient.date_for_post_op_follow_up || 'N/A'}
+                              {/* {patient.followUp_Date || 'N/A'} */
+                              patient.updated_at ? new Date(patient.updated_at).toLocaleDateString() : 'N/A'}
                             </div>
                           </td>
                           <td className="border border-gray-200 px-3 py-2">
                             <div className="text-gray-700">
-                              {patient.post_op_call_status || 'N/A'}
+                              {patient.postFollowup_Status || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-gray-700">
+                              {patient.Feedback || 'N/A'}
                             </div>
                           </td>
                           <td className="border border-gray-200 px-3 py-2">
@@ -1779,12 +1805,15 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Last Name</th>
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[90px]">DOB</th>
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[100px]">Phone Number</th>
-                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[120px]">Post Anesthesia Notes</th>
-                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[120px]">Post Anesthesia Prescription</th>
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Call Status</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[90px]">Treatment</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[120px]">Post Treatment Notes</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[120px]">Post Treatment Prescription</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[110px]">Follow Up Appointment</th>
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[120px]">Follow Up Notes</th>
-                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[100px]">Follow Up Date</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[110px]">Follow Up Date</th>
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[100px]">Post Followup Status</th>
+                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Feedback</th>
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Created At</th>
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Updated At</th>
                       </tr>
@@ -1804,7 +1833,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                           </td>
                           <td className="border border-gray-200 px-3 py-2">
                             <div className="font-medium text-gray-900">
-                              {patient.lastName || 'N/A'}
+                              {patient.last_name || 'N/A'}
                             </div>
                           </td>
                           <td className="border border-gray-200 px-3 py-2">
@@ -1814,17 +1843,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                           </td>
                           <td className="border border-gray-200 px-3 py-2">
                             <div className="font-medium text-gray-900">
-                              {patient.phoneNumber || 'N/A'}
-                            </div>
-                          </td>
-                          <td className="border border-gray-200 px-3 py-2">
-                            <div className="text-gray-700 whitespace-pre-wrap break-words max-w-[200px]">
-                              {patient.postAnesthesia_Notes || 'N/A'}
-                            </div>
-                          </td>
-                          <td className="border border-gray-200 px-3 py-2">
-                            <div className="text-gray-700 whitespace-pre-wrap break-words max-w-[200px]">
-                              {patient.postAnesthesia_Prescription || 'N/A'}
+                              {patient.phone_number || 'N/A'}
                             </div>
                           </td>
                           <td className="border border-gray-200 px-3 py-2">
@@ -1843,18 +1862,44 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                             </Badge>
                           </td>
                           <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-gray-700">
+                              {patient.Treatment || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-gray-700 whitespace-pre-wrap break-words max-w-[200px]">
+                              {patient.postTreatment_Notes || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-gray-700 whitespace-pre-wrap break-words max-w-[200px]">
+                              {patient.postTreatment_Prescription || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-gray-700">
+                              {patient.followUp_Appointment || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
                             <div className="text-gray-700 whitespace-pre-wrap break-words max-w-[200px]">
                               {patient.followUp_Notes || 'N/A'}
                             </div>
                           </td>
                           <td className="border border-gray-200 px-3 py-2">
                             <div className="text-gray-700">
-                              {patient.followUp_Date || 'N/A'}
+                              {/* {patient.followUp_Date || 'N/A'} */
+                              patient.updated_at ? new Date(patient.updated_at).toLocaleDateString() : 'N/A'}
                             </div>
                           </td>
                           <td className="border border-gray-200 px-3 py-2">
                             <div className="text-gray-700">
                               {patient.postFollowup_Status || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            <div className="text-gray-700">
+                              {patient.Feedback || 'N/A'}
                             </div>
                           </td>
                           <td className="border border-gray-200 px-3 py-2">
