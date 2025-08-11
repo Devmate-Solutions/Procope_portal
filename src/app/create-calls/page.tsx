@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { PhoneCall, Upload, Download, Plus, Trash2, Play, Search, Eye } from "lucide-react"
@@ -2157,39 +2156,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
               </div>
 
            
-              <div className="text-sm text-muted-foreground">
-                {isTemplate1User ? (
-                  <>
-                    <p>
-                      <strong>Required columns:</strong> firstName, lastName, phoneNumber
-                    </p>
-                    <p>
-                      <strong>Optional columns:</strong> DOB, Treatment, postTreatment_Notes,
-                      postTreatment_Prescription, followUpAppointment, callStatus, followUpNotes, followUpDate,
-                      postFollowupStatus
-                    </p>
-                  </>
-                ) : isTemplate2User ? (
-                  <>
-                    <p>
-                      <strong>Required columns:</strong> firstName, lastName, phoneNumber
-                    </p>
-                    <p>
-                      <strong>Optional columns:</strong> DOB, postAnesthesia_Notes, postAnesthesia_Prescription,
-                      callStatus, followUpNotes, followUpDate, postFollowupStatus
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p>
-                      <strong>Required columns:</strong> from_number, to_number, agent_id
-                    </p>
-                    <p>
-                      <strong>Optional columns:</strong> customer_name, any custom metadata
-                    </p>
-                  </>
-                )}
-              </div>
+          
 
               <div className="flex gap-3">
                 <Button onClick={processCsvData} className="flex-1" disabled={!csvData.trim()}>
@@ -2216,56 +2183,9 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
           </Card>
         )}
 
-        {/* Available Phone Numbers */}
-        {phoneNumbers.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Available Phone Numbers</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {phoneNumbers.map((phone, index) => (
-                  <div key={`phone-${index}`} className="p-3 border rounded-lg">
-                    <div className="font-medium">{phone.phoneNumber}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {phone.hasInbound && phone.hasOutbound
-                        ? "Inbound & Outbound"
-                        : phone.hasInbound
-                          ? "Inbound Only"
-                          : "Outbound Only"}
-                    </div>
-                    <div className="text-xs text-muted-foreground">Workspace: {phone.workspaceId}</div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+    
 
-        {/* Available Agents */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Available Agents</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {agents.length > 0 ? (
-                agents.map((agent, index) => (
-                  <div key={`available-agent-${agent.agent_id}-${index}`} className="p-3 border rounded-lg">
-                    <div className="font-medium">{agent.agent_name || "Unnamed Agent"}</div>
-                    <div className="text-sm text-muted-foreground">ID: {agent.agent_id}</div>
-                    {agent.type && <div className="text-xs text-muted-foreground">Type: {agent.type}</div>}
-                    {agent.phoneNumber && (
-                      <div className="text-xs text-muted-foreground">Phone: {agent.phoneNumber}</div>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <div className="col-span-full text-center py-4 text-muted-foreground">No agents available</div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+     
       </div>
 
       {/* Notes Dialog */}
