@@ -1521,7 +1521,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
 
                     {/* Scrollable Table Container */}
                     <div
-                      className="overflow-auto max-h-[600px]"
+                      className="overflow-x-auto overflow-y-auto overscroll-contain max-h-[600px]"
                       style={{
                         scrollbarWidth: "thin",
                         scrollbarColor: "#3B82F6 #F1F5F9",
@@ -1859,7 +1859,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
 
                     {/* Scrollable Table Container */}
                     <div
-                      className="overflow-auto max-h-[600px] table-container"
+                      className="overflow-x-auto overflow-y-auto overscroll-contain max-h-[600px] table-container"
                       style={{
                         scrollbarWidth: "thin",
                         scrollbarColor: "#8B5CF6 #F1F5F9",
