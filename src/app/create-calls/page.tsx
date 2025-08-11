@@ -1608,37 +1608,124 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                     className="text-sm font-medium text-gray-900 truncate"
                                     title={patient.firstName || "N/A"}
                                   >
-                                    {patient.firstName || "N/A"}
-                            </div>
-                            </div>
-                          </td>
+                                    {patient.firstName
+                                      ? String(patient.firstName).length > 40
+                                        ? `${String(patient.firstName).substring(0, 40)}...`
+                                        : String(patient.firstName)
+                                      : "N/A"}
+                                  </div>
+                                </div>
+                                {patient.firstName && String(patient.firstName).length > 40 && (
+                                  <button
+                                    type="button"
+                                    className="text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1 flex items-center space-x-1"
+                                    onClick={() =>
+                                      openNotesDialog(
+                                        `First Name - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
+                                        String(patient.firstName),
+                                      )
+                                    }
+                                  >
+                                    <Eye className="w-3 h-3" />
+                                    <span>View Full</span>
+                                  </button>
+                                )}
+                              </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div
                                   className="text-sm font-medium text-gray-900 truncate"
                                   title={patient.last_name || "N/A"}
                                 >
-                                  {patient.last_name || "N/A"}
-                            </div>
-                          </td>
+                                  {patient.last_name
+                                    ? String(patient.last_name).length > 40
+                                      ? `${String(patient.last_name).substring(0, 40)}...`
+                                      : String(patient.last_name)
+                                    : "N/A"}
+                                </div>
+                                {patient.last_name && String(patient.last_name).length > 40 && (
+                                  <button
+                                    type="button"
+                                    className="text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1 flex items-center space-x-1"
+                                    onClick={() =>
+                                      openNotesDialog(
+                                        `Last Name - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
+                                        String(patient.last_name),
+                                      )
+                                    }
+                                  >
+                                    <Eye className="w-3 h-3" />
+                                    <span>View Full</span>
+                                  </button>
+                                )}
+                              </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700 whitespace-nowrap" title={patient.DOB || "N/A"}>
                                   {patient.DOB || "N/A"}
-                            </div>
-                          </td>
+                                </div>
+                                {patient.DOB && String(patient.DOB).length > 10 && (
+                                  <button
+                                    type="button"
+                                    className="text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1 flex items-center space-x-1"
+                                    onClick={() =>
+                                      openNotesDialog(
+                                        `DOB - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
+                                        String(patient.DOB),
+                                      )
+                                    }
+                                  >
+                                    <Eye className="w-3 h-3" />
+                                    <span>View Full</span>
+                                  </button>
+                                )}
+                              </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div
                                   className="text-sm font-mono text-gray-900 truncate"
                                   title={patient.phone_number || "N/A"}
                                 >
-                                  {patient.phone_number || "N/A"}
+                                  {patient.phone_number
+                                    ? String(patient.phone_number).length > 20
+                                      ? `${String(patient.phone_number).substring(0, 20)}...`
+                                      : String(patient.phone_number)
+                                    : "N/A"}
                                 </div>
-                          </td>
+                                {patient.phone_number && String(patient.phone_number).length > 20 && (
+                                  <button
+                                    type="button"
+                                    className="text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1 flex items-center space-x-1"
+                                    onClick={() =>
+                                      openNotesDialog(
+                                        `Phone - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
+                                        String(patient.phone_number),
+                                      )
+                                    }
+                                  >
+                                    <Eye className="w-3 h-3" />
+                                    <span>View Full</span>
+                                  </button>
+                                )}
+                              </td>
                              
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700 truncate" title={patient.Treatment || "N/A"}>
                                   {patient.Call_Status || "N/A"}
-                            </div>
-                          </td>
+                                </div>
+                                {patient.Call_Status && String(patient.Call_Status).length > 20 && (
+                                  <button
+                                    type="button"
+                                    className="text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1 flex items-center space-x-1"
+                                    onClick={() =>
+                                      openNotesDialog(
+                                        `Status - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
+                                        String(patient.Call_Status),
+                                      )
+                                    }
+                                  >
+                                    <Eye className="w-3 h-3" />
+                                    <span>View Full</span>
+                                  </button>
+                                )}
+                              </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700">
                                   <div className="truncate" title={patient.Treatment || "N/A"}>
@@ -1654,7 +1741,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                       className="text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1 flex items-center space-x-1"
                                       onClick={() =>
                                         openNotesDialog(
-                                          `Post Treatment Notes - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
+                                          `Treatment - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
                                           String(patient.Treatment),
                                         )
                                       }
@@ -1674,14 +1761,13 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                         : String(patient.postTreatment_Notes)
                                       : "N/A"}
                                   </div>
-                                  {patient.postTreatment_Notes &&
-                                    String(patient.postTreatment_Notes).length > 40 && (
+                                  {patient.postTreatment_Notes && (
                                       <button
                                         type="button"
                                         className="text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1 flex items-center space-x-1"
                                         onClick={() =>
                                           openNotesDialog(
-                                            `Prescription - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
+                                            `Post Treatment Notes - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
                                             String(patient.postTreatment_Notes),
                                           )
                                         }
@@ -1697,9 +1783,28 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                   className="text-sm text-gray-700 truncate"
                                   title={patient.postTreatment_Prescription || "N/A"}
                                 >
-                                  {patient.postTreatment_Prescription || "N/A"}
-                            </div>
-                          </td>
+                                  {patient.postTreatment_Prescription
+                                    ? String(patient.postTreatment_Prescription).length > 40
+                                      ? `${String(patient.postTreatment_Prescription).substring(0, 40)}...`
+                                      : String(patient.postTreatment_Prescription)
+                                    : "N/A"}
+                                </div>
+                                {patient.postTreatment_Prescription && (
+                                    <button
+                                      type="button"
+                                      className="text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1 flex items-center space-x-1"
+                                      onClick={() =>
+                                        openNotesDialog(
+                                          `Prescription - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
+                                          String(patient.postTreatment_Prescription),
+                                        )
+                                      }
+                                    >
+                                      <Eye className="w-3 h-3" />
+                                      <span>View Full</span>
+                                    </button>
+                                  )}
+                              </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700">
                                   <div className="truncate" title={patient.followUp_Notes || "N/A"}>
@@ -1709,7 +1814,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                         : String(patient.followUp_Notes)
                                       : "N/A"}
                                   </div>
-                                  {patient.followUp_Notes && String(patient.followUp_Notes).length > 40 && (
+                                  {patient.followUp_Notes && (
                                     <button
                                       type="button"
                                       className="text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1 flex items-center space-x-1"
@@ -1732,16 +1837,46 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                   title={patient.updated_at ? new Date(patient.updated_at).toLocaleString() : "N/A"}
                                 >
                                   {patient.updated_at ? new Date(patient.updated_at).toLocaleString() : "N/A"}
-                            </div>
-                          </td>
+                                </div>
+                                {patient.updated_at && (
+                                  <button
+                                    type="button"
+                                    className="text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1 flex items-center space-x-1"
+                                    onClick={() =>
+                                      openNotesDialog(
+                                        `Follow Up Date - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
+                                        String(new Date(patient.updated_at).toLocaleString()),
+                                      )
+                                    }
+                                  >
+                                    <Eye className="w-3 h-3" />
+                                    <span>View Full</span>
+                                  </button>
+                                )}
+                              </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div
                                   className="text-sm text-gray-700 truncate"
                                   title={patient.postFollowup_Status || "N/A"}
                                 >
                                   {patient.postFollowup_Status || "N/A"}
-                            </div>
-                          </td>
+                                </div>
+                                {patient.postFollowup_Status && String(patient.postFollowup_Status).length > 20 && (
+                                  <button
+                                    type="button"
+                                    className="text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1 flex items-center space-x-1"
+                                    onClick={() =>
+                                      openNotesDialog(
+                                        `Post Call Status - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
+                                        String(patient.postFollowup_Status),
+                                      )
+                                    }
+                                  >
+                                    <Eye className="w-3 h-3" />
+                                    <span>View Full</span>
+                                  </button>
+                                )}
+                              </td>
                               <td className="px-4 py-3">
                                 <div className="text-sm text-gray-700">
                                   <div className="truncate" title={patient.Feedback || "N/A"}>
@@ -1935,30 +2070,102 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                   className="text-sm font-medium text-gray-900 truncate"
                                   title={patient.firstName || "N/A"}
                                 >
-                                  {patient.firstName || "N/A"}
-                            </div>
-                          </td>
+                                  {patient.firstName
+                                    ? String(patient.firstName).length > 40
+                                      ? `${String(patient.firstName).substring(0, 40)}...`
+                                      : String(patient.firstName)
+                                    : "N/A"}
+                                </div>
+                                {patient.firstName && String(patient.firstName).length > 40 && (
+                                  <button
+                                    type="button"
+                                    className="text-xs text-purple-600 hover:text-purple-800 hover:underline mt-1 flex items-center space-x-1"
+                                    onClick={() =>
+                                      openNotesDialog(
+                                        `First Name - ${patient.firstName || ""} ${patient.lastName || ""}`.trim(),
+                                        String(patient.firstName),
+                                      )
+                                    }
+                                  >
+                                    <Eye className="w-3 h-3" />
+                                    <span>View Full</span>
+                                  </button>
+                                )}
+                              </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div
                                   className="text-sm font-medium text-gray-900 truncate"
                                   title={patient.lastName || "N/A"}
                                 >
-                                  {patient.lastName || "N/A"}
-                            </div>
-                          </td>
+                                  {patient.lastName
+                                    ? String(patient.lastName).length > 40
+                                      ? `${String(patient.lastName).substring(0, 40)}...`
+                                      : String(patient.lastName)
+                                    : "N/A"}
+                                </div>
+                                {patient.lastName && String(patient.lastName).length > 40 && (
+                                  <button
+                                    type="button"
+                                    className="text-xs text-purple-600 hover:text-purple-800 hover:underline mt-1 flex items-center space-x-1"
+                                    onClick={() =>
+                                      openNotesDialog(
+                                        `Last Name - ${patient.firstName || ""} ${patient.lastName || ""}`.trim(),
+                                        String(patient.lastName),
+                                      )
+                                    }
+                                  >
+                                    <Eye className="w-3 h-3" />
+                                    <span>View Full</span>
+                                  </button>
+                                )}
+                              </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700 whitespace-nowrap" title={patient.DOB || "N/A"}>
                                   {patient.DOB || "N/A"}
-                            </div>
-                          </td>
+                                </div>
+                                {patient.DOB && String(patient.DOB).length > 10 && (
+                                  <button
+                                    type="button"
+                                    className="text-xs text-purple-600 hover:text-purple-800 hover:underline mt-1 flex items-center space-x-1"
+                                    onClick={() =>
+                                      openNotesDialog(
+                                        `DOB - ${patient.firstName || ""} ${patient.lastName || ""}`.trim(),
+                                        String(patient.DOB),
+                                      )
+                                    }
+                                  >
+                                    <Eye className="w-3 h-3" />
+                                    <span>View Full</span>
+                                  </button>
+                                )}
+                              </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div
                                   className="text-sm font-mono text-gray-900 truncate"
                                   title={patient.phoneNumber || "N/A"}
                                 >
-                                  {patient.phoneNumber || "N/A"}
-                            </div>
-                          </td>
+                                  {patient.phoneNumber
+                                    ? String(patient.phoneNumber).length > 20
+                                      ? `${String(patient.phoneNumber).substring(0, 20)}...`
+                                      : String(patient.phoneNumber)
+                                    : "N/A"}
+                                </div>
+                                {patient.phoneNumber && String(patient.phoneNumber).length > 20 && (
+                                  <button
+                                    type="button"
+                                    className="text-xs text-purple-600 hover:text-purple-800 hover:underline mt-1 flex items-center space-x-1"
+                                    onClick={() =>
+                                      openNotesDialog(
+                                        `Contact Number - ${patient.firstName || ""} ${patient.lastName || ""}`.trim(),
+                                        String(patient.phoneNumber),
+                                      )
+                                    }
+                                  >
+                                    <Eye className="w-3 h-3" />
+                                    <span>View Full</span>
+                                  </button>
+                                )}
+                              </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                             <Badge 
                                   variant="outline"
@@ -1989,10 +2196,10 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                   {patient.postTreatment_Notes && String(patient.postTreatment_Notes).length > 40 && (
                                     <button
                                       type="button"
-                                      className="text-xs text-purple-600 hover:text-purple-800 hover:underline mt-1 flex items-center space-x-1"
+                                       className="text-xs text-purple-600 hover:text-purple-800 hover:underline mt-1 flex items-center space-x-1"
                                       onClick={() =>
                                         openNotesDialog(
-                                          `Post Notes - ${patient.firstName || ""} ${patient.lastName || ""}`.trim(),
+                                           `Post Treatment Notes - ${patient.firstName || ""} ${patient.lastName || ""}`.trim(),
                                           String(patient.postTreatment_Notes),
                                         )
                                       }
@@ -2006,10 +2213,29 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700">
                                   <div className="truncate" title={patient.Treatment || "N/A"}>
-                                    {patient.Treatment}
-                            </div>
-                            </div>
-                          </td>
+                                    {patient.Treatment
+                                      ? String(patient.Treatment).length > 40
+                                        ? `${String(patient.Treatment).substring(0, 40)}...`
+                                        : String(patient.Treatment)
+                                      : "N/A"}
+                                  </div>
+                                  {patient.Treatment && String(patient.Treatment).length > 40 && (
+                                    <button
+                                      type="button"
+                                      className="text-xs text-purple-600 hover:text-purple-800 hover:underline mt-1 flex items-center space-x-1"
+                                      onClick={() =>
+                                        openNotesDialog(
+                                          `Treatment - ${patient.firstName || ""} ${patient.lastName || ""}`.trim(),
+                                          String(patient.Treatment),
+                                        )
+                                      }
+                                    >
+                                      <Eye className="w-3 h-3" />
+                                      <span>View Full</span>
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
 
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700">
@@ -2020,8 +2246,8 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                         : String(patient.postTreatment_Prescription)
                                       : "N/A"}
                             </div>
-                                  {patient.treatment &&
-                                    String(patient.treatment).length > 40 && (
+                                {patient.postTreatment_Prescription &&
+                                    String(patient.postTreatment_Prescription).length > 40 && (
                                       <button
                                         type="button"
                                         className="text-xs text-purple-600 hover:text-purple-800 hover:underline mt-1 flex items-center space-x-1"
