@@ -27,10 +27,10 @@ function parseCSVRow(row: string): string[] {
   const values: string[] = []
   let current = ""
   let inQuotes = false
-
+  
   for (let i = 0; i < row.length; i++) {
     const char = row[i]
-
+    
     if (char === '"') {
       inQuotes = !inQuotes
     } else if (char === "," && !inQuotes) {
@@ -40,10 +40,10 @@ function parseCSVRow(row: string): string[] {
       current += char
     }
   }
-
+  
   // Add the last value
   values.push(current.trim())
-
+  
   return values
 }
 
@@ -51,11 +51,11 @@ function parseCSVRow(row: string): string[] {
 function generateFollowUpDate(daysFromNow = 14): string {
   const date = new Date()
   date.setDate(date.getDate() + daysFromNow)
-
+  
   const month = (date.getMonth() + 1).toString().padStart(2, "0")
   const day = date.getDate().toString().padStart(2, "0")
   const year = date.getFullYear()
-
+  
   return `${month}/${day}/${year}`
 }
 
@@ -79,7 +79,7 @@ export default function CreateCallsPage() {
   const [batchCalls, setBatchCalls] = useState<CallData[]>([])
   const [csvData, setCsvData] = useState("")
   const [activeTab, setActiveTab] = useState<"single" | "batch" | "csv" | "history">("single")
-
+  
   // Patient history for template1 users
   const [patients, setPatients] = useState<any[]>([])
   const [loadingPatients, setLoadingPatients] = useState(false)
@@ -106,15 +106,15 @@ export default function CreateCallsPage() {
   }
 
   const currentUser = getCurrentUser()
-
+  
   // Debug logging
   console.log("🔍 Current user:", currentUser)
   console.log("🔍 User allowedPages:", currentUser?.allowedPages)
-
+  
   // Check if user has template1 access (which should hide single call creation)
   const isTemplate1User = currentUser?.allowedPages?.includes("template1")
   const isTemplate2User = currentUser?.allowedPages?.includes("template2")
-
+  
   console.log("🔍 Is Template1 User:", isTemplate1User)
   console.log("🔍 Is Template2 User:", isTemplate2User)
 
@@ -142,9 +142,9 @@ export default function CreateCallsPage() {
     if (searchTerm) {
       filtered = filtered.filter(
         (patient) =>
-          `${patient.firstName} ${patient.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (patient.phone_number && patient.phone_number.includes(searchTerm)) ||
-          (patient.Treatment && patient.Treatment.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        `${patient.firstName} ${patient.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (patient.phone_number && patient.phone_number.includes(searchTerm)) ||
+        (patient.Treatment && patient.Treatment.toLowerCase().includes(searchTerm.toLowerCase())) ||
           (patient.patient_id && patient.patient_id.toLowerCase().includes(searchTerm.toLowerCase())),
       )
     }
@@ -170,8 +170,8 @@ export default function CreateCallsPage() {
     if (template2SearchTerm) {
       filtered = filtered.filter(
         (patient) =>
-          `${patient.firstName} ${patient.lastName}`.toLowerCase().includes(template2SearchTerm.toLowerCase()) ||
-          (patient.phoneNumber && patient.phoneNumber.includes(template2SearchTerm)) ||
+        `${patient.firstName} ${patient.lastName}`.toLowerCase().includes(template2SearchTerm.toLowerCase()) ||
+        (patient.phoneNumber && patient.phoneNumber.includes(template2SearchTerm)) ||
           (patient.patient_id && patient.patient_id.toLowerCase().includes(template2SearchTerm.toLowerCase())),
       )
     }
@@ -191,7 +191,7 @@ export default function CreateCallsPage() {
 
   const loadPatientHistory = async () => {
     if (!isTemplate1User) return
-
+    
     try {
       setLoadingPatients(true)
       const response = await fetch("https://n8yh3flwsc.execute-api.us-east-1.amazonaws.com/prod/api/nomads/patients", {
@@ -207,7 +207,7 @@ export default function CreateCallsPage() {
       if (response.ok) {
         const data = await response.json()
         setPatients(data.patients || [])
-        console.log("📋 Loaded patient history:", data.patients?.length || 0, "patients")
+      
       } else {
         console.error("Failed to load patient history")
       }
@@ -220,19 +220,19 @@ export default function CreateCallsPage() {
 
   const loadTemplate2PatientHistory = async () => {
     if (!isTemplate2User) return
-
+    
     try {
       setLoadingTemplate2Patients(true)
       const response = await fetch(
         "https://n8yh3flwsc.execute-api.us-east-1.amazonaws.com/prod/api/anesthesia/patients",
         {
           method: "POST",
-          headers: {
+        headers: {
             "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+        },
+        body: JSON.stringify({
             action: "query",
-          }),
+        }),
         },
       )
 
@@ -254,23 +254,23 @@ export default function CreateCallsPage() {
     try {
       // Load agents and phone numbers in parallel
       const [agentsData, phoneNumbersData] = await Promise.all([getAgents(), getPhoneNumbers()])
-
+      
       // Remove duplicates and ensure unique agents
-      const uniqueAgents = Array.isArray(agentsData)
+      const uniqueAgents = Array.isArray(agentsData) 
         ? agentsData.filter((agent, index, self) => index === self.findIndex((a) => a.agent_id === agent.agent_id))
         : []
-
+      
       setAgents(uniqueAgents)
       setPhoneNumbers(phoneNumbersData || [])
-
+      
       // Auto-fill from number if only one phone number available
       if (phoneNumbersData && phoneNumbersData.length === 1) {
         setSingleCall((prev) => ({
-          ...prev,
+          ...prev, 
           from_number: phoneNumbersData[0].phoneNumber,
         }))
       }
-
+      
       console.log("📞 Loaded agents:", uniqueAgents)
       console.log("📞 Loaded phone numbers:", phoneNumbersData)
     } catch (error) {
@@ -304,7 +304,7 @@ export default function CreateCallsPage() {
 
       const result = await createCall(callData)
       setSuccess(`Call created successfully! Call ID: ${result.call_id}`)
-
+      
       // Reset form
       setSingleCall({
         from_number: "",
@@ -336,7 +336,7 @@ export default function CreateCallsPage() {
         const formattedCalls = batchCalls.map((call) => {
           // Extract dynamic variables from metadata
           const { patientData, isTemplate1, ...dynamicVars } = call.metadata || {}
-
+          
           return {
             from_number: call.from_number,
             to_number: call.to_number,
@@ -349,7 +349,7 @@ export default function CreateCallsPage() {
 
         console.log("📞 Template1 formatted calls:", formattedCalls)
         const result = await createBatchCalls(formattedCalls)
-
+        
         // After successful batch calls, update patient database like n8n workflow
         if (result.summary && result.summary.successful > 0) {
           try {
@@ -358,10 +358,10 @@ export default function CreateCallsPage() {
               .filter((call) => call.metadata?.patientData)
               .map((call) => {
                 const patientData = call.metadata?.patientData
-
+                
                 // Check if call was registered, if not set status to not-called
                 const callStatus = result.summary?.successful > 0 ? "called" : "not-called"
-
+                
                 // Map CSV fields to new API expected fields
                 return {
                   firstName: patientData.firstname || patientData["firstname"] || "",
@@ -385,19 +385,19 @@ export default function CreateCallsPage() {
             // Call nomads/patients API to update database
             if (patientUpdates.length > 0) {
               console.log("📝 Updating patient database with correct format:", patientUpdates)
-
+              
               for (const patientUpdate of patientUpdates) {
                 const updateResponse = await fetch(
                   "https://n8yh3flwsc.execute-api.us-east-1.amazonaws.com/prod/api/nomads/patients/lambda-endpoint",
                   {
                     method: "POST",
-                    headers: {
+                  headers: {
                       "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
+                  },
+                  body: JSON.stringify({
                       action: "manage",
                       data: patientUpdate,
-                    }),
+                  }),
                   },
                 )
 
@@ -408,7 +408,7 @@ export default function CreateCallsPage() {
                   console.log("✅ Patient update result:", result)
                 }
               }
-
+              
               setSuccess(
                 `Batch completed: ${result.summary.successful}/${result.summary.total} calls created successfully\nPatient database updated for ${patientUpdates.length} patients`,
               )
@@ -424,7 +424,7 @@ export default function CreateCallsPage() {
             )
           }
         }
-
+        
         if (result.failed_calls && result.failed_calls.length > 0) {
           setError(`Some calls failed: ${result.failed_calls.map((f: any) => f.error).join(", ")}`)
         }
@@ -434,17 +434,17 @@ export default function CreateCallsPage() {
           // Use dynamic agent and phone if not specified
           let fromNumber = call.from_number
           let agentId = call.agent_id
-
+          
           // If no from_number specified, use first available phone
           if (!fromNumber && phoneNumbers.length > 0) {
             fromNumber = phoneNumbers[0].phoneNumber
           }
-
+          
           // If no agent specified, use first available agent
           if (!agentId && agents.length > 0) {
             agentId = agents[0].agent_id
           }
-
+          
           return {
             from_number: fromNumber,
             to_number: call.to_number,
@@ -460,10 +460,10 @@ export default function CreateCallsPage() {
 
         console.log("📞 Regular user formatted calls:", formattedCalls)
         const result = await createBatchCalls(formattedCalls)
-
+        
         if (result.summary) {
           setSuccess(`Batch completed: ${result.summary.successful}/${result.summary.total} calls created successfully`)
-
+          
           if (result.failed_calls && result.failed_calls.length > 0) {
             setError(`Some calls failed: ${result.failed_calls.map((f: any) => f.error).join(", ")}`)
           }
@@ -524,7 +524,7 @@ export default function CreateCallsPage() {
       console.log("📋 Parsed headers:", headers)
       console.log("👤 Is Template1 User:", isTemplate1User)
       console.log("👤 Is Template2 User:", isTemplate2User)
-
+      
       if (isTemplate1User) {
         // Template1 users: Process patient data format and make calls directly
         // Check for flexible header variations
@@ -542,7 +542,7 @@ export default function CreateCallsPage() {
         console.log("📞 Phone header found:", phoneNumberHeader)
         console.log("👤 First name header found:", firstNameHeader)
         console.log("👤 Last name header found:", lastNameHeader)
-
+        
         if (!phoneNumberHeader || !firstNameHeader || !lastNameHeader) {
           setError(
             `Missing required headers. Found: ${headers.join(", ")}\nRequired: firstName/firstname, lastName/lastname, phoneNumber/phonenumber/phone number\n\nPhone header: ${phoneNumberHeader}\nFirst name header: ${firstNameHeader}\nLast name header: ${lastNameHeader}`,
@@ -552,46 +552,46 @@ export default function CreateCallsPage() {
         }
 
         const calls: CallData[] = []
-
+        
         console.log("🔍 Processing data rows...")
-
+        
         for (let i = 1; i < lines.length; i++) {
           console.log(`📝 Processing row ${i}:`, lines[i])
-
+          
           // Proper CSV parsing that handles quoted values with commas
           const values = parseCSVRow(lines[i])
           console.log("📊 Split values:", values)
           console.log("📏 Values length:", values.length, "Headers length:", headers.length)
-
+          
           if (values.length !== headers.length) {
             console.log("⚠️ Skipping row - length mismatch")
             continue
           }
-
+          
           const patientData: any = {}
-
+          
           // Map CSV headers to patient data
           headers.forEach((header, index) => {
             const value = values[index]
             patientData[header] = value
           })
-
+          
           console.log("👤 Patient data mapped:", patientData)
-
+          
           // Get phone number from flexible header
           const phoneNumber = patientData[phoneNumberHeader]
           console.log("📞 Phone number extracted:", phoneNumber)
-
+          
           // Skip if no phone number
           if (!phoneNumber) {
             console.log("⚠️ Skipping row - no phone number")
             continue
           }
-
+          
           // Get names from flexible headers first
           const firstName = patientData[firstNameHeader]
           const lastName = patientData[lastNameHeader]
-
+          
           // Check call status - only process "not-called" patients
           const callStatusHeader = headers.find((h) => h === "callstatus" || h === "call status" || h === "call_status")
           const callStatus = callStatusHeader ? patientData[callStatusHeader] : ""
@@ -600,32 +600,32 @@ export default function CreateCallsPage() {
             console.log("⚠️ Skipping row - patient already called:", firstName, lastName)
             continue
           }
-
+          
           // Format phone number (remove non-digits and add +)
           const cleanPhone = phoneNumber.replace(/\D/g, "")
           const formattedPhone = cleanPhone.startsWith("1") ? `+${cleanPhone}` : `+1${cleanPhone}`
-
+          
           // Map to retell_llm_dynamic_variables like n8n workflow with flexible header mapping
           const dynamicVars: any = {}
           if (firstName) dynamicVars.firstName = firstName
           if (lastName) dynamicVars.lastName = lastName
-
+          
           // Map other fields with flexible header names
           const dobHeader = headers.find((h) => h === "dob" || h === "date of birth" || h === "dateofbirth")
           if (dobHeader && patientData[dobHeader]) dynamicVars.DOB = patientData[dobHeader]
-
+          
           if (phoneNumber) dynamicVars.phoneNumber = phoneNumber
-
+          
           const treatmentHeader = headers.find((h) => h === "treatment" || h === "treatments")
           if (treatmentHeader && patientData[treatmentHeader]) dynamicVars.Treatment = patientData[treatmentHeader]
-
+          
           const postTreatmentNotesHeader = headers.find(
             (h) => h === "posttreatment_notes" || h === "post treatment notes" || h === "posttreatmentnotes",
           )
           if (postTreatmentNotesHeader && patientData[postTreatmentNotesHeader]) {
             dynamicVars.postTreatment_Notes = patientData[postTreatmentNotesHeader]
           }
-
+          
           const postTreatmentPrescriptionHeader = headers.find(
             (h) =>
               h === "posttreatment_prescription" ||
@@ -635,7 +635,7 @@ export default function CreateCallsPage() {
           if (postTreatmentPrescriptionHeader && patientData[postTreatmentPrescriptionHeader]) {
             dynamicVars.postTreatment_Prescription = patientData[postTreatmentPrescriptionHeader]
           }
-
+          
           const followUpAppointmentHeader = headers.find(
             (h) =>
               h === "followupappointment" ||
@@ -646,26 +646,26 @@ export default function CreateCallsPage() {
           if (followUpAppointmentHeader && patientData[followUpAppointmentHeader]) {
             dynamicVars.followUpAppointment = patientData[followUpAppointmentHeader]
           }
-
+          
           // Use the already declared callStatusHeader variable
           if (callStatusHeader && patientData[callStatusHeader]) {
             dynamicVars.callStatus = patientData[callStatusHeader]
           }
-
+          
           const followUpNotesHeader = headers.find(
             (h) => h === "followupnotes" || h === "followup_notes" || h === "follow up notes" || h === "followup notes",
           )
           if (followUpNotesHeader && patientData[followUpNotesHeader]) {
             dynamicVars.followUpNotes = patientData[followUpNotesHeader]
           }
-
+          
           const followUpDateHeader = headers.find(
             (h) => h === "followupdate" || h === "followup_date" || h === "follow up date" || h === "followup date",
           )
           if (followUpDateHeader && patientData[followUpDateHeader]) {
             dynamicVars.followUpDate = patientData[followUpDateHeader]
           }
-
+          
           const postFollowupStatusHeader = headers.find(
             (h) =>
               h === "postfollowupstatus" ||
@@ -676,11 +676,11 @@ export default function CreateCallsPage() {
           if (postFollowupStatusHeader && patientData[postFollowupStatusHeader]) {
             dynamicVars.postFollowupStatus = patientData[postFollowupStatusHeader]
           }
-
+          
           // Find outbound agent dynamically
           const outboundAgent = agents.find((agent) => agent.type === "outbound")
           const outboundPhone = phoneNumbers.find((phone) => phone.hasOutbound)
-
+          
           const call: CallData = {
             from_number: outboundPhone?.phoneNumber || "+19728338727", // Dynamic outbound phone
             to_number: formattedPhone,
@@ -692,10 +692,10 @@ export default function CreateCallsPage() {
               patientData: patientData,
             },
           }
-
+          
           calls.push(call)
         }
-
+        
         if (calls.length === 0) {
           setError("No valid patient records found in CSV")
           setIsLoading(false)
@@ -704,11 +704,11 @@ export default function CreateCallsPage() {
 
         // Directly make the calls for template1 users
         console.log("📞 Processing", calls.length, "patient calls directly from CSV")
-
+        
         // Format calls for API
         const formattedCalls = calls.map((call) => {
           const { patientData, isTemplate1, ...dynamicVars } = call.metadata || {}
-
+          
           return {
             from_number: call.from_number,
             to_number: call.to_number,
@@ -720,7 +720,7 @@ export default function CreateCallsPage() {
         })
 
         const result = await createBatchCalls(formattedCalls)
-
+        
         // After successful batch calls, update patient database
         if (result.summary && result.summary.successful > 0) {
           try {
@@ -729,10 +729,10 @@ export default function CreateCallsPage() {
               .filter((call) => call.metadata?.patientData)
               .map((call) => {
                 const patientData = call.metadata?.patientData
-
+                
                 // Check if call was registered, if not set status to not-called
                 const callStatus = result.summary?.successful > 0 ? "called" : "not-called"
-
+                
                 // Map CSV fields to new API expected fields
                 return {
                   firstName: patientData.firstname || patientData["firstname"] || "",
@@ -755,19 +755,19 @@ export default function CreateCallsPage() {
 
             if (patientUpdates.length > 0) {
               console.log("📝 Updating patient database with correct format:", patientUpdates)
-
+              
               for (const patientUpdate of patientUpdates) {
                 const updateResponse = await fetch(
-                  "https://n8yh3flwsc.execute-api.us-east-1.amazonaws.com/prod/api/nomads/patients/lambda-endpoint",
+                  "https://n8yh3flwsc.execute-api.us-east-1.amazonaws.com/prod/api/nomads/patients",
                   {
                     method: "POST",
-                    headers: {
+                  headers: {
                       "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
+                  },
+                  body: JSON.stringify({
                       action: "manage",
                       data: patientUpdate,
-                    }),
+                  }),
                   },
                 )
 
@@ -778,7 +778,7 @@ export default function CreateCallsPage() {
                   console.log("✅ Patient update result:", result)
                 }
               }
-
+              
               setSuccess(
                 `✅ Calls completed successfully!\n📞 ${result.summary.successful}/${result.summary.total} calls created\n📝 Patient database updated for ${patientUpdates.length} patients`,
               )
@@ -794,7 +794,7 @@ export default function CreateCallsPage() {
             )
           }
         }
-
+        
         if (result.failed_calls && result.failed_calls.length > 0) {
           setError(`Some calls failed: ${result.failed_calls.map((f: any) => f.error).join(", ")}`)
         }
@@ -814,7 +814,7 @@ export default function CreateCallsPage() {
         console.log("📞 Phone header found:", phoneNumberHeader)
         console.log("👤 First name header found:", firstNameHeader)
         console.log("👤 Last name header found:", lastNameHeader)
-
+        
         if (!phoneNumberHeader || !firstNameHeader || !lastNameHeader) {
           setError(
             `Missing required headers for Template2. Found: ${headers.join(", ")}\nRequired: firstName, lastName, phone number\n\nPhone header: ${phoneNumberHeader}\nFirst name header: ${firstNameHeader}\nLast name header: ${lastNameHeader}`,
@@ -824,46 +824,46 @@ export default function CreateCallsPage() {
         }
 
         const calls: CallData[] = []
-
+        
         console.log("🔍 Processing Template2 data rows...")
-
+        
         for (let i = 1; i < lines.length; i++) {
           console.log(`📝 Processing Template2 row ${i}:`, lines[i])
-
+          
           // Proper CSV parsing that handles quoted values with commas
           const values = parseCSVRow(lines[i])
           console.log("📊 Split values:", values)
           console.log("📏 Values length:", values.length, "Headers length:", headers.length)
-
+          
           if (values.length !== headers.length) {
             console.log("⚠️ Skipping row - length mismatch")
             continue
           }
-
+          
           const patientData: any = {}
-
+          
           // Map CSV headers to patient data
           headers.forEach((header, index) => {
             const value = values[index]
             patientData[header] = value
           })
-
+          
           console.log("👤 Template2 Patient data mapped:", patientData)
-
+          
           // Get phone number from flexible header
           const phoneNumber = patientData[phoneNumberHeader]
           console.log("📞 Phone number extracted:", phoneNumber)
-
+          
           // Skip if no phone number
           if (!phoneNumber) {
             console.log("⚠️ Skipping row - no phone number")
             continue
           }
-
+          
           // Get names from flexible headers
           const firstName = patientData[firstNameHeader]
           const lastName = patientData[lastNameHeader]
-
+          
           // Check call status - only process "not-called" patients
           const callStatusHeader = headers.find((h) => h === "callstatus" || h === "call status" || h === "call_status")
           const callStatus = callStatusHeader ? patientData[callStatusHeader] : ""
@@ -872,29 +872,29 @@ export default function CreateCallsPage() {
             console.log("⚠️ Skipping row - patient already called:", firstName, lastName)
             continue
           }
-
+          
           // Format phone number (remove non-digits and add +)
           const cleanPhone = phoneNumber.replace(/\D/g, "")
           const formattedPhone = cleanPhone.startsWith("1") ? `+${cleanPhone}` : `+1${cleanPhone}`
-
+          
           // Map to retell_llm_dynamic_variables for template2 with anesthesia fields
           const dynamicVars: any = {}
           if (firstName) dynamicVars.firstName = firstName
           if (lastName) dynamicVars.lastName = lastName
-
+          
           // Map template2 specific fields
           const dobHeader = headers.find((h) => h === "dob" || h === "date of birth" || h === "dateofbirth")
           if (dobHeader && patientData[dobHeader]) dynamicVars.DOB = patientData[dobHeader]
-
+          
           if (phoneNumber) dynamicVars.phoneNumber = phoneNumber
-
+          
           const postAnesthesiaNotesHeader = headers.find(
             (h) => h === "postanesthesia_notes" || h === "post notes" || h === "postanesthesianotes",
           )
           if (postAnesthesiaNotesHeader && patientData[postAnesthesiaNotesHeader]) {
             dynamicVars.postAnesthesia_Notes = patientData[postAnesthesiaNotesHeader]
           }
-
+          
           const postAnesthesiaPrescriptionHeader = headers.find(
             (h) =>
               h === "postanesthesia_prescription" ||
@@ -904,26 +904,26 @@ export default function CreateCallsPage() {
           if (postAnesthesiaPrescriptionHeader && patientData[postAnesthesiaPrescriptionHeader]) {
             dynamicVars.postAnesthesia_Prescription = patientData[postAnesthesiaPrescriptionHeader]
           }
-
+          
           // Use the already declared callStatusHeader variable
           if (callStatusHeader && patientData[callStatusHeader]) {
             dynamicVars.Call_Status = patientData[callStatusHeader]
           }
-
+          
           const followUpNotesHeader = headers.find(
             (h) => h === "followupnotes" || h === "followup_notes" || h === "follow up notes" || h === "followup notes",
           )
           if (followUpNotesHeader && patientData[followUpNotesHeader]) {
             dynamicVars.followUp_Notes = patientData[followUpNotesHeader]
           }
-
+          
           const followUpDateHeader = headers.find(
             (h) => h === "followupdate" || h === "followup_date" || h === "follow up date" || h === "followup date",
           )
           if (followUpDateHeader && patientData[followUpDateHeader]) {
             dynamicVars.followUp_Date = patientData[followUpDateHeader]
           }
-
+          
           const postFollowupStatusHeader = headers.find(
             (h) =>
               h === "postfollowupstatus" ||
@@ -934,11 +934,11 @@ export default function CreateCallsPage() {
           if (postFollowupStatusHeader && patientData[postFollowupStatusHeader]) {
             dynamicVars.postFollowup_Status = patientData[postFollowupStatusHeader]
           }
-
+          
           // Find outbound agent dynamically
           const outboundAgent = agents.find((agent) => agent.type === "outbound")
           const outboundPhone = phoneNumbers.find((phone) => phone.hasOutbound)
-
+          
           const call: CallData = {
             from_number: outboundPhone?.phoneNumber || "+19728338727", // Dynamic outbound phone
             to_number: formattedPhone,
@@ -950,10 +950,10 @@ export default function CreateCallsPage() {
               patientData: patientData,
             },
           }
-
+          
           calls.push(call)
         }
-
+        
         if (calls.length === 0) {
           setError("No valid patient records found in CSV")
           setIsLoading(false)
@@ -962,11 +962,11 @@ export default function CreateCallsPage() {
 
         // Directly make the calls for template2 users
         console.log("📞 Processing", calls.length, "Template2 patient calls directly from CSV")
-
+        
         // Format calls for API
         const formattedCalls = calls.map((call) => {
           const { patientData, isTemplate2, ...dynamicVars } = call.metadata || {}
-
+          
           return {
             from_number: call.from_number,
             to_number: call.to_number,
@@ -978,7 +978,7 @@ export default function CreateCallsPage() {
         })
 
         const result = await createBatchCalls(formattedCalls)
-
+        
         // After successful batch calls, update template2 patient database
         if (result.summary && result.summary.successful > 0) {
           try {
@@ -987,10 +987,10 @@ export default function CreateCallsPage() {
               .filter((call) => call.metadata?.patientData)
               .map((call) => {
                 const patientData = call.metadata?.patientData
-
+                
                 // Check if call was registered, if not set status to not-called
                 const callStatus = result.summary?.successful > 0 ? "called" : "not-called"
-
+                
                 // Map CSV fields to Template2 API expected fields
                 return {
                   firstName: patientData.firstname || patientData["firstname"] || "",
@@ -1012,19 +1012,19 @@ export default function CreateCallsPage() {
 
             if (patientUpdates.length > 0) {
               console.log("📝 Updating Template2 patient database with correct format:", patientUpdates)
-
+              
               for (const patientUpdate of patientUpdates) {
                 const updateResponse = await fetch(
-                  "https://n8yh3flwsc.execute-api.us-east-1.amazonaws.com/prod/api/anesthesia/patients/lambda-endpoint",
+                  "https://n8yh3flwsc.execute-api.us-east-1.amazonaws.com/prod/api/anesthesia/patients",
                   {
                     method: "POST",
-                    headers: {
+                  headers: {
                       "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
+                  },
+                  body: JSON.stringify({
                       action: "manage",
                       data: patientUpdate,
-                    }),
+                  }),
                   },
                 )
 
@@ -1035,7 +1035,7 @@ export default function CreateCallsPage() {
                   console.log("✅ Template2 Patient update result:", result)
                 }
               }
-
+              
               setSuccess(
                 `✅ Template2 Calls completed successfully!\n📞 ${result.summary.successful}/${result.summary.total} calls created\n📝 Patient database updated for ${patientUpdates.length} patients`,
               )
@@ -1051,7 +1051,7 @@ export default function CreateCallsPage() {
             )
           }
         }
-
+        
         if (result.failed_calls && result.failed_calls.length > 0) {
           setError(`Some Template2 calls failed: ${result.failed_calls.map((f: any) => f.error).join(", ")}`)
         }
@@ -1062,7 +1062,7 @@ export default function CreateCallsPage() {
         // Regular users: Process standard call format and show in batch tab
         const requiredHeaders = ["from_number", "to_number", "agent_id"]
         const missingHeaders = requiredHeaders.filter((h) => !headers.includes(h))
-
+        
         if (missingHeaders.length > 0) {
           setError(`Missing required headers: ${missingHeaders.join(", ")}`)
           setIsLoading(false)
@@ -1070,11 +1070,11 @@ export default function CreateCallsPage() {
         }
 
         const calls: CallData[] = []
-
+        
         for (let i = 1; i < lines.length; i++) {
           const values = lines[i].split(",").map((v) => v.trim())
           if (values.length !== headers.length) continue
-
+          
           const call: CallData = {
             from_number: "",
             to_number: "",
@@ -1082,7 +1082,7 @@ export default function CreateCallsPage() {
             customer_name: "",
             metadata: {},
           }
-
+          
           headers.forEach((header, index) => {
             const value = values[index]
             if (header === "from_number") call.from_number = value
@@ -1091,12 +1091,12 @@ export default function CreateCallsPage() {
             else if (header === "customer_name") call.customer_name = value
             else if (call.metadata) call.metadata[header] = value
           })
-
+          
           if (call.from_number && call.to_number && call.agent_id) {
             calls.push(call)
           }
         }
-
+        
         setBatchCalls(calls)
         setActiveTab("batch")
         setSuccess(`Loaded ${calls.length} calls from CSV - Review and create calls in Batch tab`)
@@ -1134,7 +1134,7 @@ export default function CreateCallsPage() {
 
   const downloadCsvTemplate = () => {
     let template
-
+    
     if (isTemplate1User) {
       // Template1 users get patient data CSV format - matching user's exact format
       template = `firstName,lastName,DOB,phone number,Treatment,postTreatment_Notes,postTreatment_Prescription,followUp_Appointment,Call Status,followUp_Notes,followUp_Date,postFollowup_Status
@@ -1147,7 +1147,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
       // Regular users get standard call format
       template = "from_number,to_number,agent_id,customer_name\n+1234567890,+0987654321,agent_123,John Doe"
     }
-
+    
     const blob = new Blob([template], { type: "text/csv" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
@@ -1253,8 +1253,8 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                 <div>
                   <Label htmlFor="fromNumber">From Number</Label>
                   {phoneNumbers.length > 0 ? (
-                    <Select
-                      value={singleCall.from_number}
+                    <Select 
+                      value={singleCall.from_number} 
                       onValueChange={(value) => setSingleCall({ ...singleCall, from_number: value })}
                     >
                       <SelectTrigger>
@@ -1296,8 +1296,8 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="agent">Agent</Label>
-                  <Select
-                    value={singleCall.agent_id}
+                  <Select 
+                    value={singleCall.agent_id} 
                     onValueChange={(value) => setSingleCall({ ...singleCall, agent_id: value })}
                   >
                     <SelectTrigger>
@@ -1396,7 +1396,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
-
+                      
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <Label>From Number</Label>
@@ -1415,12 +1415,12 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                           />
                         </div>
                       </div>
-
+                      
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <Label>Agent</Label>
-                          <Select
-                            value={call.agent_id}
+                          <Select 
+                            value={call.agent_id} 
                             onValueChange={(value) => updateBatchCall(index, "agent_id", value)}
                           >
                             <SelectTrigger>
@@ -1522,7 +1522,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                     {/* Scrollable Table Container */}
                     <div
                       className="overflow-x-auto overflow-y-auto overscroll-contain max-h-[600px]"
-                      style={{
+                    style={{
                         scrollbarWidth: "thin",
                         scrollbarColor: "#3B82F6 #F1F5F9",
                       }}
@@ -1575,19 +1575,15 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                             </th>
                             <th className="w-[140px] px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-100">
                               <div className="flex items-center space-x-1">
-                                <span>Follow Up Appt</span>
+                                <span>Follow Up Notes</span>
                               </div>
                             </th>
                             <th className="w-[160px] px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-100">
                               <div className="flex items-center space-x-1">
-                                <span>Follow Up Notes</span>
-                              </div>
-                            </th>
-                            <th className="w-[120px] px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-100">
-                              <div className="flex items-center space-x-1">
                                 <span>Follow Up Date</span>
                               </div>
                             </th>
+                           
                             <th className="w-[130px] px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-100">
                               <div className="flex items-center space-x-1">
                                 <span>Post Status</span>
@@ -1598,10 +1594,10 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                 <span>Feedback</span>
                               </div>
                             </th>
-                          </tr>
-                        </thead>
+                      </tr>
+                    </thead>
                         <tbody className="divide-y divide-gray-100">
-                          {filteredPatients.map((patient, index) => (
+                      {filteredPatients.map((patient, index) => (
                             <tr
                               key={`patient-${patient.patient_id || index}`}
                               className="hover:bg-blue-50/50 transition-colors duration-150"
@@ -1613,22 +1609,22 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                     title={patient.firstName || "N/A"}
                                   >
                                     {patient.firstName || "N/A"}
-                                  </div>
-                                </div>
-                              </td>
+                            </div>
+                            </div>
+                          </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div
                                   className="text-sm font-medium text-gray-900 truncate"
                                   title={patient.last_name || "N/A"}
                                 >
                                   {patient.last_name || "N/A"}
-                                </div>
-                              </td>
+                            </div>
+                          </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700 whitespace-nowrap" title={patient.DOB || "N/A"}>
                                   {patient.DOB || "N/A"}
-                                </div>
-                              </td>
+                            </div>
+                          </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div
                                   className="text-sm font-mono text-gray-900 truncate"
@@ -1636,13 +1632,13 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                 >
                                   {patient.phone_number || "N/A"}
                                 </div>
-                              </td>
+                          </td>
                              
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700 truncate" title={patient.Treatment || "N/A"}>
                                   {patient.Treatment || "N/A"}
-                                </div>
-                              </td>
+                            </div>
+                          </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700">
                                   <div className="truncate" title={patient.postTreatment_Notes || "N/A"}>
@@ -1667,8 +1663,8 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                       <span>View Full</span>
                                     </button>
                                   )}
-                                </div>
-                              </td>
+                            </div>
+                          </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700">
                                   <div className="truncate" title={patient.postTreatment_Prescription || "N/A"}>
@@ -1694,16 +1690,16 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                         <span>View Full</span>
                                       </button>
                                     )}
-                                </div>
-                              </td>
+                            </div>
+                          </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div
                                   className="text-sm text-gray-700 truncate"
                                   title={patient.followUp_Appointment || "N/A"}
                                 >
                                   {patient.followUp_Appointment || "N/A"}
-                                </div>
-                              </td>
+                            </div>
+                          </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700">
                                   <div className="truncate" title={patient.followUp_Notes || "N/A"}>
@@ -1728,24 +1724,24 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                       <span>View Full</span>
                                     </button>
                                   )}
-                                </div>
-                              </td>
+                            </div>
+                          </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div
                                   className="text-sm text-gray-700 truncate"
                                   title={patient.updated_at ? new Date(patient.updated_at).toLocaleDateString() : "N/A"}
                                 >
                                   {patient.updated_at ? new Date(patient.updated_at).toLocaleDateString() : "N/A"}
-                                </div>
-                              </td>
+                            </div>
+                          </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div
                                   className="text-sm text-gray-700 truncate"
                                   title={patient.postFollowup_Status || "N/A"}
                                 >
                                   {patient.postFollowup_Status || "N/A"}
-                                </div>
-                              </td>
+                            </div>
+                          </td>
                               <td className="px-4 py-3">
                                 <div className="text-sm text-gray-700">
                                   <div className="truncate" title={patient.Feedback || "N/A"}>
@@ -1772,12 +1768,12 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                   )}
                                 </div>
                               </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
+                        </tr>
+                      ))}
+                    </tbody>
+                    </table>
+                  </div>
+                  
                    
                   </div>
                 </div>
@@ -1859,11 +1855,8 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
 
                     {/* Scrollable Table Container */}
                     <div
-                      className="overflow-x-auto overflow-y-auto overscroll-contain max-h-[600px] table-container"
-                      style={{
-                        scrollbarWidth: "thin",
-                        scrollbarColor: "#8B5CF6 #F1F5F9",
-                      }}
+                      className=" "
+                     
                     >
                       <table className="w-full table-fixed" style={{ minWidth: "1400px" }}>
                         <thead className="sticky top-0 bg-white border-b border-gray-200 z-10">
@@ -1883,10 +1876,10 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                 <span>DOB</span>
                               </div>
                             </th>
-                            <th className="w-[130px] px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-100">
-                              <div className="flex items-center space-x-1">
-                                <PhoneCall className="w-3 h-3" />
-                                <span>Phone</span>
+                            <th className="w-[110px] px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-100">
+                            <div className="flex items-center space-x-1">
+                             
+                                <span>Contact Number</span>
                               </div>
                             </th>
                             <th className="w-[110px] px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-100">
@@ -1896,7 +1889,12 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                             </th>
                             <th className="w-[160px] px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-100">
                               <div className="flex items-center space-x-1">
-                                <span>Post Notes</span>
+                                <span>Post Treatment Notes</span>
+                              </div>
+                            </th>
+                            <th className="w-[160px] px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-100">
+                              <div className="flex items-center space-x-1">
+                                <span>Treatment</span>
                               </div>
                             </th>
                             <th className="w-[160px] px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-100">
@@ -1906,7 +1904,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                             </th>
                             <th className="w-[160px] px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-100">
                               <div className="flex items-center space-x-1">
-                                <span>Follow Up Notes</span>
+                                <span>Follow Up app</span>
                               </div>
                             </th>
                             <th className="w-[120px] px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-100">
@@ -1924,10 +1922,10 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                 <span>Feedback</span>
                               </div>
                             </th>
-                          </tr>
-                        </thead>
+                      </tr>
+                    </thead>
                         <tbody className="divide-y divide-gray-100">
-                          {filteredTemplate2Patients.map((patient, index) => (
+                      {filteredTemplate2Patients.map((patient, index) => (
                             <tr
                               key={`template2-patient-${patient.patient_id || index}`}
                               className="hover:bg-purple-50/50 transition-colors duration-150"
@@ -1938,31 +1936,31 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                   title={patient.firstName || "N/A"}
                                 >
                                   {patient.firstName || "N/A"}
-                                </div>
-                              </td>
+                            </div>
+                          </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div
                                   className="text-sm font-medium text-gray-900 truncate"
                                   title={patient.lastName || "N/A"}
                                 >
                                   {patient.lastName || "N/A"}
-                                </div>
-                              </td>
+                            </div>
+                          </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700 whitespace-nowrap" title={patient.DOB || "N/A"}>
                                   {patient.DOB || "N/A"}
-                                </div>
-                              </td>
+                            </div>
+                          </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div
                                   className="text-sm font-mono text-gray-900 truncate"
                                   title={patient.phoneNumber || "N/A"}
                                 >
                                   {patient.phoneNumber || "N/A"}
-                                </div>
-                              </td>
+                            </div>
+                          </td>
                               <td className="px-4 py-3 border-r border-gray-100">
-                                <Badge
+                            <Badge 
                                   variant="outline"
                                   className={`text-xs font-medium px-2 py-1 rounded-full border ${
                                     patient.Call_Status === "called"
@@ -1977,8 +1975,8 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                     : patient.Call_Status === "failed"
                                       ? "❌ Failed"
                                       : "⏳ Not Called"}
-                                </Badge>
-                              </td>
+                            </Badge>
+                          </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700">
                                   <div className="truncate" title={patient.postTreatment_Notes || "N/A"}>
@@ -1987,7 +1985,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                         ? `${String(patient.postTreatment_Notes).substring(0, 40)}...`
                                         : String(patient.postTreatment_Notes)
                                       : "N/A"}
-                                  </div>
+                            </div>
                                   {patient.postTreatment_Notes && String(patient.postTreatment_Notes).length > 40 && (
                                     <button
                                       type="button"
@@ -2003,8 +2001,16 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                       <span>View Full</span>
                                     </button>
                                   )}
-                                </div>
-                              </td>
+                            </div>
+                          </td>
+                              <td className="px-4 py-3 border-r border-gray-100">
+                                <div className="text-sm text-gray-700">
+                                  <div className="truncate" title={patient.Treatment || "N/A"}>
+                                    {patient.Treatment}
+                            </div>
+                            </div>
+                          </td>
+
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700">
                                   <div className="truncate" title={patient.postTreatment_Prescription || "N/A"}>
@@ -2013,9 +2019,9 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                         ? `${String(patient.postTreatment_Prescription).substring(0, 40)}...`
                                         : String(patient.postTreatment_Prescription)
                                       : "N/A"}
-                                  </div>
-                                  {patient.postTreatment_Prescription &&
-                                    String(patient.postTreatment_Prescription).length > 40 && (
+                            </div>
+                                  {patient.treatment &&
+                                    String(patient.treatment).length > 40 && (
                                       <button
                                         type="button"
                                         className="text-xs text-purple-600 hover:text-purple-800 hover:underline mt-1 flex items-center space-x-1"
@@ -2030,8 +2036,8 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                         <span>View Full</span>
                                       </button>
                                     )}
-                                </div>
-                              </td>
+                            </div>
+                          </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700">
                                   <div className="truncate" title={patient.followUp_Notes || "N/A"}>
@@ -2056,24 +2062,24 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                       <span>View Full</span>
                                     </button>
                                   )}
-                                </div>
-                              </td>
+                            </div>
+                          </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div
                                   className="text-sm text-gray-700 truncate"
                                   title={patient.updated_at ? new Date(patient.updated_at).toLocaleDateString() : "N/A"}
                                 >
                                   {patient.updated_at ? new Date(patient.updated_at).toLocaleDateString() : "N/A"}
-                                </div>
-                              </td>
+                            </div>
+                          </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div
                                   className="text-sm text-gray-700 truncate"
                                   title={patient.postFollowup_Status || "N/A"}
                                 >
                                   {patient.postFollowup_Status || "N/A"}
-                                </div>
-                              </td>
+                            </div>
+                          </td>
                               <td className="px-4 py-3">
                                 <div className="text-sm text-gray-700">
                                   <div className="truncate" title={patient.Feedback || "N/A"}>
@@ -2082,7 +2088,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                         ? `${String(patient.Feedback).substring(0, 30)}...`
                                         : String(patient.Feedback)
                                       : "N/A"}
-                                  </div>
+                            </div>
                                   {patient.Feedback && String(patient.Feedback).length > 30 && (
                                     <button
                                       type="button"
@@ -2100,12 +2106,12 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                   )}
                                 </div>
                               </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
+                        </tr>
+                      ))}
+                    </tbody>
+                    </table>
+                  </div>
+                  
              
                   </div>
                 </div>
@@ -2186,7 +2192,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
     
 
      
-      </div>
+                    </div>
 
       {/* Notes Dialog */}
       <Dialog open={isNotesDialogOpen} onOpenChange={setIsNotesDialogOpen}>
@@ -2197,7 +2203,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
           </DialogHeader>
           <div className="max-h-[60vh] overflow-auto whitespace-pre-wrap break-words text-sm">
             {notesDialogContent || "N/A"}
-          </div>
+                    </div>
         </DialogContent>
       </Dialog>
     </AuthenticatedLayout>
