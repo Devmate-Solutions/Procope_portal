@@ -117,7 +117,7 @@ export default function PDFExtractorPage() {
       const formData = new FormData()
       formData.append("file", selectedFile)
 
-      const response = await fetch("http://107.21.36.145:5000/upload", {
+      const response = await fetch("https://mydent.duckdns.org:5000/upload", {
         method: "POST",
         body: formData,
       })
