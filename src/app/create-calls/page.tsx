@@ -1550,7 +1550,6 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                     <table className="w-full border-collapse text-sm" style={{ minWidth: '1400px' }}>
                     <thead>
                       <tr className="bg-gray-50">
-                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Patient ID</th>
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">First Name</th>
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Last Name</th>
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[90px]">DOB</th>
@@ -1564,18 +1563,11 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[110px]">Follow Up Date</th>
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[100px]">Post Followup Status</th>
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Feedback</th>
-                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Created At</th>
-                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Updated At</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredPatients.map((patient, index) => (
                         <tr key={`patient-${patient.patient_id || index}`} className="hover:bg-gray-50">
-                          <td className="border border-gray-200 px-3 py-2">
-                            <div className="text-xs text-gray-600">
-                              {patient.patient_id || 'N/A'}
-                            </div>
-                          </td>
                           <td className="border border-gray-200 px-3 py-2">
                             <div className="font-medium text-gray-900">
                               {patient.firstName || 'N/A'}
@@ -1650,16 +1642,6 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                           <td className="border border-gray-200 px-3 py-2">
                             <div className="text-gray-700">
                               {patient.Feedback || 'N/A'}
-                            </div>
-                          </td>
-                          <td className="border border-gray-200 px-3 py-2">
-                            <div className="text-xs text-gray-500">
-                              {patient.created_at ? new Date(patient.created_at).toLocaleDateString() : 'N/A'}
-                            </div>
-                          </td>
-                          <td className="border border-gray-200 px-3 py-2">
-                            <div className="text-xs text-gray-500">
-                              {patient.updated_at ? new Date(patient.updated_at).toLocaleDateString() : 'N/A'}
                             </div>
                           </td>
                         </tr>
@@ -1800,7 +1782,6 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                     <table className="w-full border-collapse text-sm" style={{ minWidth: '1200px' }}>
                     <thead>
                       <tr className="bg-gray-50">
-                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Patient ID</th>
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">First Name</th>
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Last Name</th>
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[90px]">DOB</th>
@@ -1814,18 +1795,11 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[110px]">Follow Up Date</th>
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[100px]">Post Followup Status</th>
                         <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Feedback</th>
-                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Created At</th>
-                        <th className="border border-gray-200 px-2 py-2 text-left font-medium text-gray-900 w-[80px]">Updated At</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredTemplate2Patients.map((patient, index) => (
                         <tr key={`template2-patient-${patient.patient_id || index}`} className="hover:bg-gray-50">
-                          <td className="border border-gray-200 px-3 py-2">
-                            <div className="text-xs text-gray-600">
-                              {patient.patient_id || 'N/A'}
-                            </div>
-                          </td>
                           <td className="border border-gray-200 px-3 py-2">
                             <div className="font-medium text-gray-900">
                               {patient.firstName || 'N/A'}
@@ -1902,7 +1876,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                               {patient.Feedback || 'N/A'}
                             </div>
                           </td>
-                          <td className="border border-gray-200 px-3 py-2">
+                          {/* <td className="border border-gray-200 px-3 py-2">
                             <div className="text-xs text-gray-500">
                               {patient.created_at ? new Date(patient.created_at).toLocaleDateString() : 'N/A'}
                             </div>
@@ -1911,7 +1885,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                             <div className="text-xs text-gray-500">
                               {patient.updated_at ? new Date(patient.updated_at).toLocaleDateString() : 'N/A'}
                             </div>
-                          </td>
+                          </td> */}
                         </tr>
                       ))}
                     </tbody>
