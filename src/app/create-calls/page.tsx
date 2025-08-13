@@ -162,6 +162,33 @@ ${sections.length > 4 ? `\n📝 ADDITIONAL NOTES:\n${sections.slice(4).join(', '
     }
   }, [isTemplate1User, isTemplate2User])
 
+  // Auto-refresh patient history every 10 seconds
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null
+
+    if (isTemplate1User && activeTab === "history") {
+      console.log("🔄 Starting Template1 patient history auto-refresh (10s interval)")
+      interval = setInterval(() => {
+        console.log("🔄 Auto-refreshing Template1 patient history...")
+        loadPatientHistory()
+      }, 10000) // 10 seconds
+    } else if (isTemplate2User && activeTab === "history") {
+      console.log("🔄 Starting Template2 patient history auto-refresh (10s interval)")
+      interval = setInterval(() => {
+        console.log("🔄 Auto-refreshing Template2 patient history...")
+        loadTemplate2PatientHistory()
+      }, 10000) // 10 seconds
+    }
+
+    // Cleanup interval when component unmounts or dependencies change
+    return () => {
+      if (interval) {
+        console.log("🛑 Stopping patient history auto-refresh")
+        clearInterval(interval)
+      }
+    }
+  }, [isTemplate1User, isTemplate2User, activeTab])
+
   // Filter patients based on search term and status
   useEffect(() => {
     let filtered = patients
