@@ -101,7 +101,35 @@ export default function CreateCallsPage() {
 
   const openNotesDialog = (title: string, content: string) => {
     setNotesDialogTitle(title)
-    setNotesDialogContent(content || "N/A")
+    
+    // Check if this is follow-up notes and format accordingly
+    if (title.toLowerCase().includes('follow up notes') && content && content !== "N/A") {
+      // Split follow-up notes by comma and organize into 4 sections
+      const sections = content.split(',').map(section => section.trim())
+      
+      const formattedContent = `
+📋 FOLLOW-UP NOTES BREAKDOWN:
+
+1️⃣ SUMMARY:
+${sections[0] || "No summary provided"}
+
+2️⃣ TREATMENT:
+${sections[1] || "No treatment details provided"}
+
+3️⃣ PRESCRIPTION:
+${sections[2] || "No prescription details provided"}
+
+4️⃣ COMPLICATIONS:
+${sections[3] || "No complications reported"}
+
+${sections.length > 4 ? `\n📝 ADDITIONAL NOTES:\n${sections.slice(4).join(', ')}` : ''}
+      `.trim()
+      
+      setNotesDialogContent(formattedContent)
+    } else {
+      setNotesDialogContent(content || "N/A")
+    }
+    
     setIsNotesDialogOpen(true)
   }
 
@@ -402,13 +430,14 @@ export default function CreateCallsPage() {
                 // Check if call was registered, if not set status to not-called
                 const callStatus = "called" // For template2, assume successful if we reach this point
                 
-                // Map CSV fields to new API expected fields
+                // Map CSV fields to new API expected fields - include ALL fields from CSV
                 return {
                   firstName: patientData.firstname || patientData["firstname"] || "",
                   lastName: patientData.lastname || patientData["lastname"] || "",
                   DOB: patientData.dob || patientData["dob"] || "",
                   phone_number: (patientData.phonenumber || patientData["phone number"] || "").replace(/\D/g, ""), // Remove non-digits
                   Treatment: patientData.treatment || "",
+                  postTreatment_Instructions: patientData.posttreatment_instructions || patientData["posttreatment_instructions"] || "",
                   postTreatment_Notes: patientData.posttreatment_notes || patientData["posttreatment_notes"] || "",
                   postTreatment_Prescription:
                     patientData.posttreatment_prescription || patientData["posttreatment_prescription"] || "",
@@ -418,7 +447,7 @@ export default function CreateCallsPage() {
                   followUp_Date: patientData.followup_date || patientData["followup_date"] || generateFollowUpDate(),
                   postFollowup_Status:
                     patientData.postfollowup_status || patientData["postfollowup_status"] || "not-called",
-                  Feedback: "",
+                  Feedback: patientData.feedback || patientData["feedback"] || "",
                 }
               })
 
@@ -652,56 +681,89 @@ export default function CreateCallsPage() {
           if (firstName) dynamicVars.firstName = firstName
           if (lastName) dynamicVars.lastName = lastName
           
-          // Dynamic field mapping - matches backend exactly
+          // Dynamic field mapping - matches backend exactly and includes ALL CSV headers
           const fieldMapping: Record<string, string> = {
             'firstName': 'firstName',
             'first_name': 'firstName',
+            'firstname': 'firstName',
             'First Name': 'firstName',
+            'lastName': 'lastName',
+            'last_name': 'lastName',
+            'lastname': 'lastName',
+            'Last Name': 'lastName',
             'phone_number': 'phone_number',
             'phone number': 'phone_number',
             'phoneNumber': 'phone_number',
             'Phone Number': 'phone_number',
             'PhoneNumber': 'phone_number',
+            'phonenumber': 'phone_number',
             'Treatment': 'Treatment',
             'treatment': 'Treatment',
+            'DOB': 'DOB',
+            'dob': 'DOB',
+            'date of birth': 'DOB',
+            'dateofbirth': 'DOB',
+            'postTreatment_Instructions': 'postTreatment_Instructions',
+            'posttreatment_instructions': 'postTreatment_Instructions',
+            'postTreatment Instructions': 'postTreatment_Instructions',
+            'Post-treatment Instructions': 'postTreatment_Instructions',
+            'post_treatment_instructions': 'postTreatment_Instructions',
             'postTreatment_Notes': 'postTreatment_Notes',
+            'posttreatment_notes': 'postTreatment_Notes',
             'postTreatment Notes': 'postTreatment_Notes',
             'Post-treatment Notes': 'postTreatment_Notes',
             'post_treatment_notes': 'postTreatment_Notes',
             'postTreatment_Prescription': 'postTreatment_Prescription',
+            'posttreatment_prescription': 'postTreatment_Prescription',
             'postTreatment Prescription': 'postTreatment_Prescription',
             'Post-treatment Prescription': 'postTreatment_Prescription',
             'Post-treatment Perscription': 'postTreatment_Prescription',
             'post_treatment_prescription': 'postTreatment_Prescription',
             'followUp_Appointment': 'followUp_Appointment',
+            'followup_appointment': 'followUp_Appointment',
             'followUp Appointment': 'followUp_Appointment',
             'Follow Up Appointment': 'followUp_Appointment',
             'follow_up_appointment': 'followUp_Appointment',
             'Call_Status': 'Call_Status',
-            'Call Status': 'Call_Status',
             'call_status': 'Call_Status',
+            'Call Status': 'Call_Status',
+            'callstatus': 'Call_Status',
             'followUp_Notes': 'followUp_Notes',
+            'followup_notes': 'followUp_Notes',
             'followUp Notes': 'followUp_Notes',
+            'Follow Up Notes': 'followUp_Notes',
             'Post-Ops Follow Up Notes': 'followUp_Notes',
             'post_ops_follow_up_notes': 'followUp_Notes',
             'followUp_Date': 'followUp_Date',
+            'followup_date': 'followUp_Date',
             'followUp Date': 'followUp_Date',
+            'Follow Up Date': 'followUp_Date',
             'Date for Post-Op Follow up': 'followUp_Date',
             'date_for_post_op_follow_up': 'followUp_Date',
             'postFollowup_Status': 'postFollowup_Status',
-            'postTreatment_Instructions': 'postTreatment_Instructions',
+            'postfollowup_status': 'postFollowup_Status',
             'postFollowup Status': 'postFollowup_Status',
+            'Post Followup Status': 'postFollowup_Status',
             'Post-Op Call Status': 'postFollowup_Status',
             'post_op_call_status': 'postFollowup_Status',
             'Feedback': 'Feedback',
             'feedback': 'Feedback'
           }
           
-          // Apply dynamic field mapping
+          // Apply dynamic field mapping for ALL headers
           headers.forEach((header) => {
             const mappedField = fieldMapping[header]
-            if (mappedField && patientData[header]) {
+            if (mappedField && patientData[header] !== undefined && patientData[header] !== '') {
               dynamicVars[mappedField] = patientData[header]
+            }
+          })
+          
+          // Also map any unmapped headers directly (fallback)
+          headers.forEach((header) => {
+            if (!fieldMapping[header] && patientData[header] !== undefined && patientData[header] !== '') {
+              // Convert header to camelCase for unmapped fields
+              const camelCaseHeader = header.replace(/_([a-z])/g, (g) => g[1].toUpperCase())
+              dynamicVars[camelCaseHeader] = patientData[header]
             }
           })
           
@@ -804,6 +866,7 @@ export default function CreateCallsPage() {
                   postTreatment_Notes: patientData.posttreatment_notes || patientData["posttreatment_notes"] || "",
                   postTreatment_Prescription:
                     patientData.posttreatment_prescription || patientData["posttreatment_prescription"] || "",
+                    postTreatment_Instructions: patientData.posttreatment_instructions || patientData["posttreatment_instructions"] || "",
                   followUp_Appointment: patientData.followup_appointment || patientData["followup_appointment"] || "",
                   Call_Status: callStatus,
                   followUp_Notes: patientData.followup_notes || patientData["followup_notes"] || "",
@@ -1035,7 +1098,6 @@ export default function CreateCallsPage() {
             from_number: call.from_number,
             to_number: call.to_number,
             override_agent_id: call.agent_id,
-            override_agent_version: 1,
             retell_llm_dynamic_variables: dynamicVars,
             metadata: {},
           }
