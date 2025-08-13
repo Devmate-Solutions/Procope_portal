@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
-import { AuthenticatedLayout } from '../components/AuthenticatedLayout';
+import { AuthenticatedLayout } from '../components/AuthenticatedLayout';  
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";

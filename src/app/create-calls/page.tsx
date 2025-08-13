@@ -333,25 +333,65 @@ export default function CreateCallsPage() {
 
       if (isTemplate1User) {
         // Template1 users: Handle patient data with proper mapping
-        const formattedCalls = batchCalls.map((call) => {
-          // Extract dynamic variables from metadata
-          const { patientData, isTemplate1, ...dynamicVars } = call.metadata || {}
+        // const formattedCalls = batchCalls.map((call) => {
+        //   // Extract dynamic variables from metadata
+        //   const { patientData, isTemplate1, ...dynamicVars } = call.metadata || {}
           
-          return {
-            from_number: call.from_number,
-            to_number: call.to_number,
-            override_agent_id: call.agent_id, // Use override_agent_id like n8n workflow
-            override_agent_version: 1, // Like n8n workflow
-            retell_llm_dynamic_variables: dynamicVars, // All the mapped patient variables
-            metadata: {},
-          }
+        //   return {
+        //     from_number: call.from_number,
+        //     to_number: call.to_number,
+        //     override_agent_id: call.agent_id, // Use override_agent_id like n8n workflow
+        //     retell_llm_dynamic_variables: dynamicVars, // All the mapped patient variables
+        //     metadata: {},
+        //   }
+        // })
+
+        // Template1: Use aws-api createBatchCalls with Retell API format
+        // Format the batch call data to ensure it goes to handle_retell_api_format in backend
+        const batchCallData = {
+          name: `Template1 Batch Call - ${new Date().toISOString().split('T')[0]}`,
+          trigger_timestamp: Date.now() + (2 * 60 * 60 * 1000), // 2 hours from now
+          from_number: batchCalls[0]?.from_number || "+19728338727",
+          tasks: batchCalls.map((call) => {
+            const { patientData, isTemplate1, ...dynamicVars } = call.metadata || {}
+            
+            return {
+              to_number: call.to_number,
+              retell_llm_dynamic_variables: dynamicVars
+            }
+          })
+        }
+
+        console.log("📞 Template1 Retell API batch call format:", batchCallData)
+        
+        // Template1: Need to send data with 'tasks' key to trigger handle_retell_api_format
+        // Since createBatchCalls wraps data in 'calls' key, we need to send the batch call data directly
+        console.log("📞 Template1 sending Retell API format with tasks key:", batchCallData)
+        
+        // Get the auth token and make direct request to ensure 'tasks' key is sent
+        const token = localStorage.getItem('auth_token')
+        if (!token) {
+          throw new Error('No authentication token found')
+        }
+
+        const response = await fetch('https://u7zoq3e0ek.execute-api.us-east-1.amazonaws.com/prod/retell/call/batch', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify(batchCallData) // This sends { tasks: [...] } directly
         })
 
-        console.log("📞 Template1 formatted calls:", formattedCalls)
-        const result = await createBatchCalls(formattedCalls)
+        if (!response.ok) {
+          const errorText = await response.text()
+          throw new Error(`Batch call failed: ${response.status} ${errorText}`)
+        }
+
+        const batchResponse = await response.json()
         
         // After successful batch calls, update patient database like n8n workflow
-        if (result.summary && result.summary.successful > 0) {
+        if (batchResponse.success) {
           try {
             // Prepare patient updates for nomads API with correct field mapping
             const patientUpdates = batchCalls
@@ -360,7 +400,7 @@ export default function CreateCallsPage() {
                 const patientData = call.metadata?.patientData
                 
                 // Check if call was registered, if not set status to not-called
-                const callStatus = result.summary?.successful > 0 ? "called" : "not-called"
+                const callStatus = "called" // For template2, assume successful if we reach this point
                 
                 // Map CSV fields to new API expected fields
                 return {
@@ -382,13 +422,14 @@ export default function CreateCallsPage() {
                 }
               })
 
+
             // Call nomads/patients API to update database
             if (patientUpdates.length > 0) {
               console.log("📝 Updating patient database with correct format:", patientUpdates)
               
               for (const patientUpdate of patientUpdates) {
                 const updateResponse = await fetch(
-                  "https://n8yh3flwsc.execute-api.us-east-1.amazonaws.com/prod/api/nomads/patients/lambda-endpoint",
+                  "https://n8yh3flwsc.execute-api.us-east-1.amazonaws.com/prod/api/nomads/patients",
                   {
                     method: "POST",
                   headers: {
@@ -396,6 +437,7 @@ export default function CreateCallsPage() {
                   },
                   body: JSON.stringify({
                       action: "manage",
+                      mode:"append",
                       data: patientUpdate,
                   }),
                   },
@@ -410,23 +452,23 @@ export default function CreateCallsPage() {
               }
               
               setSuccess(
-                `Batch completed: ${result.summary.successful}/${result.summary.total} calls created successfully\nPatient database updated for ${patientUpdates.length} patients`,
+                `✅ Template1 Batch Call completed successfully!\n📞 Batch call created with ${batchCalls.length} tasks\n📝 Patient database updated for ${patientUpdates.length} patients`,
               )
             } else {
               setSuccess(
-                `Batch completed: ${result.summary.successful}/${result.summary.total} calls created successfully`,
+                `✅ Template1 Batch Call completed successfully!\n📞 Batch call created with ${batchCalls.length} tasks`,
               )
             }
           } catch (updateError) {
             console.error("Failed to update patient database:", updateError)
             setSuccess(
-              `Batch completed: ${result.summary.successful}/${result.summary.total} calls created successfully\nWarning: Patient database update failed`,
+              `✅ Template1 Batch Call completed successfully!\n📞 Batch call created with ${batchCalls.length} tasks\n⚠️ Warning: Patient database update failed`,
             )
           }
         }
         
-        if (result.failed_calls && result.failed_calls.length > 0) {
-          setError(`Some calls failed: ${result.failed_calls.map((f: any) => f.error).join(", ")}`)
+        if (!batchResponse.success) {
+          setError(`Batch call failed: ${batchResponse.error || 'Unknown error'}`)
         }
       } else {
         // Regular users: Standard call format with dynamic agent/phone selection
@@ -605,77 +647,70 @@ export default function CreateCallsPage() {
           const cleanPhone = phoneNumber.replace(/\D/g, "")
           const formattedPhone = cleanPhone.startsWith("1") ? `+${cleanPhone}` : `+1${cleanPhone}`
           
-          // Map to retell_llm_dynamic_variables like n8n workflow with flexible header mapping
+          // Map to retell_llm_dynamic_variables using dynamic field mapping like backend
           const dynamicVars: any = {}
           if (firstName) dynamicVars.firstName = firstName
           if (lastName) dynamicVars.lastName = lastName
           
-          // Map other fields with flexible header names
+          // Dynamic field mapping - matches backend exactly
+          const fieldMapping: Record<string, string> = {
+            'firstName': 'firstName',
+            'first_name': 'firstName',
+            'First Name': 'firstName',
+            'phone_number': 'phone_number',
+            'phone number': 'phone_number',
+            'phoneNumber': 'phone_number',
+            'Phone Number': 'phone_number',
+            'PhoneNumber': 'phone_number',
+            'Treatment': 'Treatment',
+            'treatment': 'Treatment',
+            'postTreatment_Notes': 'postTreatment_Notes',
+            'postTreatment Notes': 'postTreatment_Notes',
+            'Post-treatment Notes': 'postTreatment_Notes',
+            'post_treatment_notes': 'postTreatment_Notes',
+            'postTreatment_Prescription': 'postTreatment_Prescription',
+            'postTreatment Prescription': 'postTreatment_Prescription',
+            'Post-treatment Prescription': 'postTreatment_Prescription',
+            'Post-treatment Perscription': 'postTreatment_Prescription',
+            'post_treatment_prescription': 'postTreatment_Prescription',
+            'followUp_Appointment': 'followUp_Appointment',
+            'followUp Appointment': 'followUp_Appointment',
+            'Follow Up Appointment': 'followUp_Appointment',
+            'follow_up_appointment': 'followUp_Appointment',
+            'Call_Status': 'Call_Status',
+            'Call Status': 'Call_Status',
+            'call_status': 'Call_Status',
+            'followUp_Notes': 'followUp_Notes',
+            'followUp Notes': 'followUp_Notes',
+            'Post-Ops Follow Up Notes': 'followUp_Notes',
+            'post_ops_follow_up_notes': 'followUp_Notes',
+            'followUp_Date': 'followUp_Date',
+            'followUp Date': 'followUp_Date',
+            'Date for Post-Op Follow up': 'followUp_Date',
+            'date_for_post_op_follow_up': 'followUp_Date',
+            'postFollowup_Status': 'postFollowup_Status',
+            'postTreatment_Instructions': 'postTreatment_Instructions',
+            'postFollowup Status': 'postFollowup_Status',
+            'Post-Op Call Status': 'postFollowup_Status',
+            'post_op_call_status': 'postFollowup_Status',
+            'Feedback': 'Feedback',
+            'feedback': 'Feedback'
+          }
+          
+          // Apply dynamic field mapping
+          headers.forEach((header) => {
+            const mappedField = fieldMapping[header]
+            if (mappedField && patientData[header]) {
+              dynamicVars[mappedField] = patientData[header]
+            }
+          })
+          
+          // Ensure phone number is included
+          if (phoneNumber) dynamicVars.phone_number = phoneNumber
+          
+          // Add DOB if present
           const dobHeader = headers.find((h) => h === "dob" || h === "date of birth" || h === "dateofbirth")
           if (dobHeader && patientData[dobHeader]) dynamicVars.DOB = patientData[dobHeader]
-          
-          if (phoneNumber) dynamicVars.phoneNumber = phoneNumber
-          
-          const treatmentHeader = headers.find((h) => h === "treatment" || h === "treatments")
-          if (treatmentHeader && patientData[treatmentHeader]) dynamicVars.Treatment = patientData[treatmentHeader]
-          
-          const postTreatmentNotesHeader = headers.find(
-            (h) => h === "posttreatment_notes" || h === "post treatment notes" || h === "posttreatmentnotes",
-          )
-          if (postTreatmentNotesHeader && patientData[postTreatmentNotesHeader]) {
-            dynamicVars.postTreatment_Notes = patientData[postTreatmentNotesHeader]
-          }
-          
-          const postTreatmentPrescriptionHeader = headers.find(
-            (h) =>
-              h === "posttreatment_prescription" ||
-              h === "post treatment prescription" ||
-              h === "posttreatmentprescription",
-          )
-          if (postTreatmentPrescriptionHeader && patientData[postTreatmentPrescriptionHeader]) {
-            dynamicVars.postTreatment_Prescription = patientData[postTreatmentPrescriptionHeader]
-          }
-          
-          const followUpAppointmentHeader = headers.find(
-            (h) =>
-              h === "followupappointment" ||
-              h === "followup_appointment" ||
-              h === "follow up appointment" ||
-              h === "followup appointment",
-          )
-          if (followUpAppointmentHeader && patientData[followUpAppointmentHeader]) {
-            dynamicVars.followUpAppointment = patientData[followUpAppointmentHeader]
-          }
-          
-          // Use the already declared callStatusHeader variable
-          if (callStatusHeader && patientData[callStatusHeader]) {
-            dynamicVars.callStatus = patientData[callStatusHeader]
-          }
-          
-          const followUpNotesHeader = headers.find(
-            (h) => h === "followupnotes" || h === "followup_notes" || h === "follow up notes" || h === "followup notes",
-          )
-          if (followUpNotesHeader && patientData[followUpNotesHeader]) {
-            dynamicVars.followUpNotes = patientData[followUpNotesHeader]
-          }
-          
-          const followUpDateHeader = headers.find(
-            (h) => h === "followupdate" || h === "followup_date" || h === "follow up date" || h === "followup date",
-          )
-          if (followUpDateHeader && patientData[followUpDateHeader]) {
-            dynamicVars.followUpDate = patientData[followUpDateHeader]
-          }
-          
-          const postFollowupStatusHeader = headers.find(
-            (h) =>
-              h === "postfollowupstatus" ||
-              h === "postfollowup_status" ||
-              h === "post followup status" ||
-              h === "post followup_status",
-          )
-          if (postFollowupStatusHeader && patientData[postFollowupStatusHeader]) {
-            dynamicVars.postFollowupStatus = patientData[postFollowupStatusHeader]
-          }
           
           // Find outbound agent dynamically
           const outboundAgent = agents.find((agent) => agent.type === "outbound")
@@ -705,24 +740,50 @@ export default function CreateCallsPage() {
         // Directly make the calls for template1 users
         console.log("📞 Processing", calls.length, "patient calls directly from CSV")
         
-        // Format calls for API
-        const formattedCalls = calls.map((call) => {
-          const { patientData, isTemplate1, ...dynamicVars } = call.metadata || {}
-          
-          return {
-            from_number: call.from_number,
-            to_number: call.to_number,
-            override_agent_id: call.agent_id,
-            override_agent_version: 1,
-            retell_llm_dynamic_variables: dynamicVars,
-            metadata: {},
-          }
+        // Template1: Format for Retell API batch call format (with tasks array)
+        const batchCallData = {
+          name: `Template1 Batch Call - ${new Date().toISOString().split('T')[0]}`,
+          trigger_timestamp: Date.now()+4000,// + (2 * 60 * 60 * 1000), // 2 hours from now
+          from_number: calls[0]?.from_number || "+19728338727",
+          tasks: calls.map((call) => {
+            const { patientData, isTemplate1, ...dynamicVars } = call.metadata || {}
+            
+            return {
+              to_number: call.to_number,
+              retell_llm_dynamic_variables: dynamicVars
+            }
+          })
+        }
+
+        console.log("📞 Template1 Retell API format:", batchCallData)
+        
+        // Use aws-api createBatchCalls function - this will send the batch call data to backend
+        // The backend will detect the 'tasks' array and route to handle_retell_api_format
+        
+        // const batchResponse = await createBatchCalls([batchCallData])
+        const token = localStorage.getItem('auth_token')
+        if (!token) {
+          throw new Error('No authentication token found')
+        }
+         const response = await fetch('https://u7zoq3e0ek.execute-api.us-east-1.amazonaws.com/prod/retell/call/batch', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify(batchCallData) // This sends { tasks: [...] } directly
         })
 
-        const result = await createBatchCalls(formattedCalls)
+        //const batchResponse = await createBatchCalls([batchCallData])
+        if (!response.ok) {
+          const errorText = await response.text()
+          throw new Error(`Batch call failed: ${response.status} ${errorText}`)
+        }
+
+        const batchResponse = await response.json()
         
         // After successful batch calls, update patient database
-        if (result.summary && result.summary.successful > 0) {
+        if (batchResponse.success) {
           try {
             // Prepare patient updates for nomads API with correct field mapping
             const patientUpdates = calls
@@ -731,7 +792,7 @@ export default function CreateCallsPage() {
                 const patientData = call.metadata?.patientData
                 
                 // Check if call was registered, if not set status to not-called
-                const callStatus = result.summary?.successful > 0 ? "called" : "not-called"
+                const callStatus = batchResponse.success ? "called" : "not-called"
                 
                 // Map CSV fields to new API expected fields
                 return {
@@ -780,27 +841,30 @@ export default function CreateCallsPage() {
               }
               
               setSuccess(
-                `✅ Calls completed successfully!\n📞 ${result.summary.successful}/${result.summary.total} calls created\n📝 Patient database updated for ${patientUpdates.length} patients`,
+                `✅ Template1 Batch Call completed successfully!\n📞 Batch call created with ${calls.length} tasks\n📝 Patient database updated for ${patientUpdates.length} patients`,
               )
             } else {
               setSuccess(
-                `✅ Calls completed successfully!\n���� ${result.summary.successful}/${result.summary.total} calls created`,
+                `✅ Template1 Batch Call completed successfully!\n📞 Batch call created with ${calls.length} tasks`,
               )
             }
           } catch (updateError) {
             console.error("Failed to update patient database:", updateError)
             setSuccess(
-              `✅ Calls completed successfully!\n📞 ${result.summary.successful}/${result.summary.total} calls created\n⚠️ Warning: Patient database update failed`,
+              `✅ Template1 Batch Call completed successfully!\n📞 Batch call created with ${calls.length} tasks\n⚠️ Warning: Patient database update failed`,
             )
           }
         }
         
-        if (result.failed_calls && result.failed_calls.length > 0) {
-          setError(`Some calls failed: ${result.failed_calls.map((f: any) => f.error).join(", ")}`)
+        if (!batchResponse.success) {
+          setError(`Batch call failed: ${batchResponse.error || 'Unknown error'}`)
         }
 
         // Clear CSV data after successful processing
         setCsvData("")
+        
+        // Refresh patient history automatically
+        await loadPatientHistory()
       } else if (isTemplate2User) {
         // Template2 users: Process anesthesia patient data format and make calls directly
         // Check for flexible header variations for template2 format
@@ -1058,6 +1122,9 @@ export default function CreateCallsPage() {
 
         // Clear CSV data after successful processing
         setCsvData("")
+        
+        // Refresh template2 patient history automatically
+        await loadTemplate2PatientHistory()
       } else {
         // Regular users: Process standard call format and show in batch tab
         const requiredHeaders = ["from_number", "to_number", "agent_id"]
@@ -1136,9 +1203,9 @@ export default function CreateCallsPage() {
     let template
     
     if (isTemplate1User) {
-      // Template1 users get patient data CSV format - matching user's exact format
-      template = `firstName,lastName,DOB,phone number,Treatment,postTreatment_Notes,postTreatment_Prescription,followUp_Appointment,Call Status,followUp_Notes,followUp_Date,postFollowup_Status
-Ayaz,Momin,03/20/1983,96896466583,teeth cleaning,care needed on bottom left tooth,prescribed mouth wash,"06/07/2025 , 02:00 CST",not-called,[Call Summary],[Calling Date & Time],[Call Picked/ Not Picked etc]`
+      // Template1 users get patient data CSV format - updated format
+      template = `firstName,lastName,DOB,phone number,Treatment,postTreatment_Instructions,postTreatment_Prescription,Feedback,followUp_Notes,Call Status,followUp_Date,postFollowup_Status
+Ayaz,Momin,03/20/1983,96896466583,teeth cleaning,care needed on bottom left tooth,prescribed mouth wash,Patient satisfied with treatment,[Call Summary],not-called,[Calling Date & Time],[Call Picked/ Not Picked etc]`
     } else if (isTemplate2User) {
       // Template2 users get anesthesia patient data CSV format
       template = `firstName,lastName,DOB,phone number,postAnesthesia_Notes,postAnesthesia_Prescription,Call Status,followUp_Notes,followUp_Date,postFollowup_Status
@@ -1565,12 +1632,17 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                             </th>
                             <th className="w-[160px] px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-100">
                               <div className="flex items-center space-x-1">
-                                <span>Post Treatment Notes</span>
+                                <span>Post Treatment Instructions</span>
                               </div>
                             </th>
                             <th className="w-[160px] px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-100">
                               <div className="flex items-center space-x-1">
-                                <span>Prescription</span>
+                                <span>Post Treatment Prescription</span>
+                              </div>
+                            </th>
+                            <th className="w-[120px] px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-100">
+                              <div className="flex items-center space-x-1">
+                                <span>Feedback</span>
                               </div>
                             </th>
                             <th className="w-[140px] px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-100">
@@ -1583,15 +1655,9 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                 <span>Follow Up Date</span>
                               </div>
                             </th>
-                           
-                            <th className="w-[130px] px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-100">
+                            <th className="w-[130px] px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                               <div className="flex items-center space-x-1">
-                                <span>Post Call Status</span>
-                              </div>
-                            </th>
-                            <th className="w-[120px] px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                              <div className="flex items-center space-x-1">
-                                <span>Feedback</span>
+                                <span>Post Followup Status</span>
                               </div>
                             </th>
                       </tr>
@@ -1754,21 +1820,21 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                           </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700">
-                                  <div className="truncate" title={patient.postTreatment_Notes || "N/A"}>
-                                    {patient.postTreatment_Notes
-                                      ? String(patient.postTreatment_Notes).length > 40
-                                        ? `${String(patient.postTreatment_Notes).substring(0, 40)}...`
-                                        : String(patient.postTreatment_Notes)
+                                  <div className="truncate" title={patient.postTreatment_Instructions || "N/A"}>
+                                    {patient.postTreatment_Instructions
+                                      ? String(patient.postTreatment_Instructions).length > 40
+                                        ? `${String(patient.postTreatment_Instructions).substring(0, 40)}...`
+                                        : String(patient.postTreatment_Instructions)
                                       : "N/A"}
                                   </div>
-                                  {patient.postTreatment_Notes && (
+                                  {patient.postTreatment_Instructions && (
                                       <button
                                         type="button"
                                         className="text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1 flex items-center space-x-1"
                                         onClick={() =>
                                           openNotesDialog(
-                                            `Post Treatment Notes - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
-                                            String(patient.postTreatment_Notes),
+                                            `Post Treatment Instructions - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
+                                            String(patient.postTreatment_Instructions),
                                           )
                                         }
                                       >
@@ -1795,7 +1861,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                       className="text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1 flex items-center space-x-1"
                                       onClick={() =>
                                         openNotesDialog(
-                                          `Prescription - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
+                                          `Post Treatment Prescription - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
                                           String(patient.postTreatment_Prescription),
                                         )
                                       }
@@ -1804,6 +1870,32 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                       <span>View Full</span>
                                     </button>
                                   )}
+                              </td>
+                              <td className="px-4 py-3 border-r border-gray-100">
+                                <div className="text-sm text-gray-700">
+                                  <div className="truncate" title={patient.Feedback || "N/A"}>
+                                    {patient.Feedback
+                                      ? String(patient.Feedback).length > 30
+                                        ? `${String(patient.Feedback).substring(0, 30)}...`
+                                        : String(patient.Feedback)
+                                      : "N/A"}
+                                  </div>
+                                  {patient.Feedback && String(patient.Feedback).length > 30 && (
+                                    <button
+                                      type="button"
+                                      className="text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1 flex items-center space-x-1"
+                                      onClick={() =>
+                                        openNotesDialog(
+                                          `Feedback - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
+                                          String(patient.Feedback),
+                                        )
+                                      }
+                                    >
+                                      <Eye className="w-3 h-3" />
+                                      <span>View Full</span>
+                                    </button>
+                                  )}
+                                </div>
                               </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700">
@@ -1854,7 +1946,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                   </button>
                                 )}
                               </td>
-                              <td className="px-4 py-3 border-r border-gray-100">
+                              <td className="px-4 py-3">
                                 <div
                                   className="text-sm text-gray-700 truncate"
                                   title={patient.postFollowup_Status || "N/A"}
@@ -1867,7 +1959,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                     className="text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1 flex items-center space-x-1"
                                     onClick={() =>
                                       openNotesDialog(
-                                        `Post Call Status - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
+                                        `Post Followup Status - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
                                         String(patient.postFollowup_Status),
                                       )
                                     }
@@ -1876,32 +1968,6 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                     <span>View Full</span>
                                   </button>
                                 )}
-                              </td>
-                              <td className="px-4 py-3">
-                                <div className="text-sm text-gray-700">
-                                  <div className="truncate" title={patient.Feedback || "N/A"}>
-                                    {patient.Feedback
-                                      ? String(patient.Feedback).length > 30
-                                        ? `${String(patient.Feedback).substring(0, 30)}...`
-                                        : String(patient.Feedback)
-                                      : "N/A"}
-                                  </div>
-                                  {patient.Feedback && String(patient.Feedback).length > 30 && (
-                                    <button
-                                      type="button"
-                                      className="text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1 flex items-center space-x-1"
-                                      onClick={() =>
-                                        openNotesDialog(
-                                          `Feedback - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
-                                          String(patient.Feedback),
-                                        )
-                                      }
-                                    >
-                                      <Eye className="w-3 h-3" />
-                                      <span>View Full</span>
-                                    </button>
-                                  )}
-                                </div>
                               </td>
                         </tr>
                       ))}
