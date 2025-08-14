@@ -2278,21 +2278,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                 <div className="text-sm text-gray-700 whitespace-nowrap" title={patient.DOB || "N/A"}>
                                   {patient.DOB || "N/A"}
                                 </div>
-                                {patient.DOB && String(patient.DOB).length > 10 && (
-                                  <button
-                                    type="button"
-                                    className="text-xs text-purple-600 hover:text-purple-800 hover:underline mt-1 flex items-center space-x-1"
-                                    onClick={() =>
-                                      openNotesDialog(
-                                        `DOB - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
-                                        String(patient.DOB),
-                                      )
-                                    }
-                                  >
-                                    <Eye className="w-3 h-3" />
-                                    <span>View Full</span>
-                                  </button>
-                                )}
+                               
                               </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div
