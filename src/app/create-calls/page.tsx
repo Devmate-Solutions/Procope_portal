@@ -2288,22 +2288,22 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div
                                   className="text-sm font-mono text-gray-900 truncate"
-                                  title={patient.phoneNumber || "N/A"}
+                                  title={patient.phone_number || "N/A"}
                                 >
-                                  {patient.phoneNumber
-                                    ? String(patient.phoneNumber).length > 20
-                                      ? `${String(patient.phoneNumber).substring(0, 20)}...`
-                                      : String(patient.phoneNumber)
+                                  {patient.phone_number
+                                    ? String(patient.phone_number).length > 20
+                                      ? `${String(patient.phone_number).substring(0, 20)}...`
+                                      : String(patient.phone_number)
                                     : "N/A"}
                                 </div>
-                                {patient.phoneNumber && String(patient.phoneNumber).length > 20 && (
+                                {patient.phone_number && String(patient.phone_number).length > 20 && (
                                   <button
                                     type="button"
                                     className="text-xs text-purple-600 hover:text-purple-800 hover:underline mt-1 flex items-center space-x-1"
                                     onClick={() =>
                                       openNotesDialog(
                                         `Contact Number - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
-                                        String(patient.phoneNumber),
+                                        String(patient.phone_number),
                                       )
                                     }
                                   >
