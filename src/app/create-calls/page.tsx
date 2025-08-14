@@ -171,7 +171,7 @@ ${sections.length > 4 ? `\n📝 ADDITIONAL NOTES:\n${sections.slice(4).join(', '
       interval = setInterval(() => {
         console.log("🔄 Auto-refreshing Template1 patient history...")
         loadPatientHistory()
-      }, 10000) // 10 seconds
+      }, 120000) // 120 seconds
     } else if (isTemplate2User && activeTab === "history") {
       console.log("🔄 Starting Template2 patient history auto-refresh (10s interval)")
       interval = setInterval(() => {
