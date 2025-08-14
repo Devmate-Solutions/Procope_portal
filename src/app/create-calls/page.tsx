@@ -177,7 +177,7 @@ ${sections.length > 4 ? `\n📝 ADDITIONAL NOTES:\n${sections.slice(4).join(', '
       interval = setInterval(() => {
         console.log("🔄 Auto-refreshing Template2 patient history...")
         loadTemplate2PatientHistory()
-      }, 10000) // 10 seconds
+      }, 120000) // 10 seconds
     }
 
     // Cleanup interval when component unmounts or dependencies change
