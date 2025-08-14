@@ -2284,7 +2284,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                     className="text-xs text-purple-600 hover:text-purple-800 hover:underline mt-1 flex items-center space-x-1"
                                     onClick={() =>
                                       openNotesDialog(
-                                        `DOB - ${patient.firstName || ""} ${patient.lastName || ""}`.trim(),
+                                        `DOB - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
                                         String(patient.DOB),
                                       )
                                     }
@@ -2311,7 +2311,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                     className="text-xs text-purple-600 hover:text-purple-800 hover:underline mt-1 flex items-center space-x-1"
                                     onClick={() =>
                                       openNotesDialog(
-                                        `Contact Number - ${patient.firstName || ""} ${patient.lastName || ""}`.trim(),
+                                        `Contact Number - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
                                         String(patient.phoneNumber),
                                       )
                                     }
