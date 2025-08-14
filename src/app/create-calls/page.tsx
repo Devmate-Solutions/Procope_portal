@@ -2197,6 +2197,11 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                 <span>Follow Up Notes</span>
                               </div>
                             </th>
+                            <th className="w-[160px] px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-100">
+                              <div className="flex items-center space-x-1">
+                                <span>Follow Up App</span>
+                              </div>
+                            </th>
                             <th className="w-[120px] px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-100">
                               <div className="flex items-center space-x-1">
                                 <span>Follow Up Date</span>
@@ -2414,7 +2419,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                         : String(patient.followUp_Notes)
                                       : "N/A"}
                                   </div>
-                                  {patient.followUp_Notes && String(patient.followUp_Notes).length > 40 && (
+                                   {patient.followUp_Notes && String(patient.followUp_Notes).length > 40 && (
                                     <button
                                       type="button"
                                       className="text-xs text-purple-600 hover:text-purple-800 hover:underline mt-1 flex items-center space-x-1"
@@ -2429,6 +2434,19 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                       <span>View Full</span>
                                     </button>
                                   )}
+          
+                            </div>
+                          </td>
+                              <td className="px-4 py-3 border-r border-gray-100">
+                                <div className="text-sm text-gray-700">
+                                  <div className="truncate" title={patient.followUp_Appointment || "N/A"}>
+                                    {patient.followUp_Appointment
+                                      ? String(patient.followUp_Appointment).length > 40
+                                        ? `${String(patient.followUp_Appointment).substring(0, 40)}...`
+                                        : String(patient.followUp_Appointment)
+                                      : "N/A"}
+                                  </div>
+          
                             </div>
                           </td>
                               <td className="px-4 py-3 border-r border-gray-100">
