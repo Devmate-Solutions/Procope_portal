@@ -2237,7 +2237,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                     className="text-xs text-purple-600 hover:text-purple-800 hover:underline mt-1 flex items-center space-x-1"
                                     onClick={() =>
                                       openNotesDialog(
-                                        `First Name - ${patient.firstName || ""} ${patient.lastName || ""}`.trim(),
+                                        `First Name - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
                                         String(patient.firstName),
                                       )
                                     }
@@ -2250,22 +2250,22 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div
                                   className="text-sm font-medium text-gray-900 truncate"
-                                  title={patient.lastName || "N/A"}
+                                  title={patient.last_name || "N/A"}
                                 >
-                                  {patient.lastName
-                                    ? String(patient.lastName).length > 40
-                                      ? `${String(patient.lastName).substring(0, 40)}...`
-                                      : String(patient.lastName)
+                                  {patient.last_name
+                                    ? String(patient.last_name).length > 40
+                                      ? `${String(patient.last_name).substring(0, 40)}...`
+                                      : String(patient.last_name)
                                     : "N/A"}
                                 </div>
-                                {patient.lastName && String(patient.lastName).length > 40 && (
+                                {patient.last_name && String(patient.last_name).length > 40 && (
                                   <button
                                     type="button"
                                     className="text-xs text-purple-600 hover:text-purple-800 hover:underline mt-1 flex items-center space-x-1"
                                     onClick={() =>
                                       openNotesDialog(
-                                        `Last Name - ${patient.firstName || ""} ${patient.lastName || ""}`.trim(),
-                                        String(patient.lastName),
+                                        `Last Name - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
+                                        String(patient.last_name),
                                       )
                                     }
                                   >
