@@ -1046,7 +1046,7 @@ ${sections.length > 4 ? `\n📝 ADDITIONAL NOTES:\n${sections.slice(4).join(', '
             (h) => h === "postanesthesia_notes" || h === "post notes" || h === "postanesthesianotes",
           )
           if (postAnesthesiaNotesHeader && patientData[postAnesthesiaNotesHeader]) {
-            dynamicVars.postAnesthesia_Notes = patientData[postAnesthesiaNotesHeader]
+            dynamicVars.postTreatment_Notes = patientData[postAnesthesiaNotesHeader]
           }
           
           const postAnesthesiaPrescriptionHeader = headers.find(
@@ -1056,7 +1056,7 @@ ${sections.length > 4 ? `\n📝 ADDITIONAL NOTES:\n${sections.slice(4).join(', '
               h === "postanesthesiaprescription",
           )
           if (postAnesthesiaPrescriptionHeader && patientData[postAnesthesiaPrescriptionHeader]) {
-            dynamicVars.postAnesthesia_Prescription = patientData[postAnesthesiaPrescriptionHeader]
+            dynamicVars.postTreatment_Prescription = patientData[postAnesthesiaPrescriptionHeader]
           }
           
           // Use the already declared callStatusHeader variable
@@ -2194,7 +2194,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                             </th>
                             <th className="w-[160px] px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-100">
                               <div className="flex items-center space-x-1">
-                                <span>Follow Up app</span>
+                                <span>Follow Up Notes</span>
                               </div>
                             </th>
                             <th className="w-[120px] px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-100">
