@@ -1319,8 +1319,8 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
 
   return (
     <AuthenticatedLayout requiredPage="create-calls">
-      <div className="space-y-6 max-w-full overflow-x-hidden">
-        <div>
+      <div className="space-y-6 w-full ">
+        <div className="mb-6">
           <h1 className="text-3xl font-bold tracking-tight">Create Outbound Calls</h1>
           <p className="text-muted-foreground">
             {isTemplate1User
@@ -1346,7 +1346,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
         )}
 
         {/* Tab Navigation - Hide Single Call tab for template users */}
-        <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg w-fit">
+        <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg w-fit mb-6">
           {!isTemplate1User && !isTemplate2User && (
             <button
               onClick={() => setActiveTab("single")}
@@ -1364,7 +1364,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                 activeTab === "history" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
               }`}
             >
-              Patient History ({patients.length})
+              Patient History 
             </button>
           ) : isTemplate2User ? (
             <button
@@ -1373,7 +1373,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                 activeTab === "history" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
               }`}
             >
-              Patient History ({template2Patients.length})
+              Patient History 
             </button>
           ) : (
             <button
@@ -1615,7 +1615,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <PhoneCall className="h-5 w-5" />
-                  Patient History ({patients.length})
+                  Patient History 
                 </div>
                 <Button variant="outline" onClick={loadPatientHistory} disabled={loadingPatients}>
                   {loadingPatients ? (
@@ -1664,7 +1664,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
               ) : (
                 <div className="w-full">
                   {/* Perfect Table Design with Enhanced Styling */}
-                  <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+                  <div className="bg-white rounded-xl shadow-lg border border-gray-200 ">
                     {/* Table Header */}
                     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200 px-6 py-4">
                       <h3 className="text-lg font-semibold text-gray-900">Patient Records</h3>
@@ -1678,13 +1678,11 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                     {/* Scrollable Table Container */}
                     <div
                       className="overflow-x-auto overflow-y-auto overscroll-contain max-h-[600px]"
-                    style={{
+                      style={{
                         scrollbarWidth: "thin",
                         scrollbarColor: "#3B82F6 #F1F5F9",
                       }}
                     >
-                      
-
                       <table className="w-full table-fixed" style={{ minWidth: "1600px" }}>
                         <thead className="sticky top-0 bg-white border-b border-gray-200 z-10">
                           <tr>
@@ -1749,10 +1747,10 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                 <span>Post Followup Status</span>
                               </div>
                             </th>
-                      </tr>
-                    </thead>
-                        <tbody className="divide-y divide-gray-100">
-                      {filteredPatients.map((patient, index) => (
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {filteredPatients.map((patient, index) => (
                             <tr
                               key={`patient-${patient.patient_id || index}`}
                               className="hover:bg-blue-50/50 transition-colors duration-150"
@@ -1860,7 +1858,6 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                   </button>
                                 )}
                               </td>
-                             
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700 truncate" title={patient.Treatment || "N/A"}>
                                   {patient.Call_Status || "N/A"}
@@ -1905,8 +1902,8 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                       <span>View Full</span>
                                     </button>
                                   )}
-                            </div>
-                          </td>
+                                </div>
+                              </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700">
                                   <div className="truncate" title={patient.postTreatment_Instructions || "N/A"}>
@@ -1917,22 +1914,22 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                       : "N/A"}
                                   </div>
                                   {patient.postTreatment_Instructions && (
-                                      <button
-                                        type="button"
-                                        className="text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1 flex items-center space-x-1"
-                                        onClick={() =>
-                                          openNotesDialog(
-                                            `Post Treatment Instructions - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
-                                            String(patient.postTreatment_Instructions),
-                                          )
-                                        }
-                                      >
-                                        <Eye className="w-3 h-3" />
-                                        <span>View Full</span>
-                                      </button>
-                                    )}
-                            </div>
-                          </td>
+                                    <button
+                                      type="button"
+                                      className="text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1 flex items-center space-x-1"
+                                      onClick={() =>
+                                        openNotesDialog(
+                                          `Post Treatment Instructions - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
+                                          String(patient.postTreatment_Instructions),
+                                        )
+                                      }
+                                    >
+                                      <Eye className="w-3 h-3" />
+                                      <span>View Full</span>
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div
                                   className="text-sm text-gray-700 truncate"
@@ -1945,20 +1942,20 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                     : "N/A"}
                                 </div>
                                 {patient.postTreatment_Prescription && (
-                                    <button
-                                      type="button"
-                                      className="text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1 flex items-center space-x-1"
-                                      onClick={() =>
-                                        openNotesDialog(
-                                          `Post Treatment Prescription - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
-                                          String(patient.postTreatment_Prescription),
-                                        )
-                                      }
-                                    >
-                                      <Eye className="w-3 h-3" />
-                                      <span>View Full</span>
-                                    </button>
-                                  )}
+                                  <button
+                                    type="button"
+                                    className="text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1 flex items-center space-x-1"
+                                    onClick={() =>
+                                      openNotesDialog(
+                                        `Post Treatment Prescription - ${patient.firstName || ""} ${patient.last_name || ""}`.trim(),
+                                        String(patient.postTreatment_Prescription),
+                                      )
+                                    }
+                                  >
+                                    <Eye className="w-3 h-3" />
+                                    <span>View Full</span>
+                                  </button>
+                                )}
                               </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700">
@@ -2010,8 +2007,8 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                       <span>View Full</span>
                                     </button>
                                   )}
-                            </div>
-                          </td>
+                                </div>
+                              </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div
                                   className="text-sm text-gray-700 truncate"
@@ -2058,13 +2055,11 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                   </button>
                                 )}
                               </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    </table>
-                  </div>
-                  
-                   
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               )}
@@ -2079,7 +2074,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <PhoneCall className="h-5 w-5" />
-                  Template2 Patient History ({template2Patients.length})
+                  Template2 Patient History 
                 </div>
                 <Button variant="outline" onClick={loadTemplate2PatientHistory} disabled={loadingTemplate2Patients}>
                   {loadingTemplate2Patients ? (
@@ -2107,7 +2102,6 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                     />
                   </div>
                 </div>
-               
               </div>
 
               {loadingTemplate2Patients ? (
@@ -2132,7 +2126,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
               ) : (
                 <div className="w-full">
                   {/* Perfect Table Design for Template2 */}
-                  <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+                  <div className="bg-white rounded-xl shadow-lg border border-gray-200 ">
                     {/* Table Header */}
                     <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-gray-200 px-6 py-4">
                       <h3 className="text-lg font-semibold text-gray-900"> Patient Records</h3>
@@ -2145,8 +2139,11 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
 
                     {/* Scrollable Table Container */}
                     <div
-                      className=" "
-                     
+                      className="overflow-x-auto overflow-y-auto overscroll-contain max-h-[600px]"
+                      style={{
+                        scrollbarWidth: "thin",
+                        scrollbarColor: "#9F7AEA #F1F5F9",
+                      }}
                     >
                       <table className="w-full table-fixed" style={{ minWidth: "1400px" }}>
                         <thead className="sticky top-0 bg-white border-b border-gray-200 z-10">
@@ -2167,8 +2164,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                               </div>
                             </th>
                             <th className="w-[110px] px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-100">
-                            <div className="flex items-center space-x-1">
-                             
+                              <div className="flex items-center space-x-1">
                                 <span>Contact Number</span>
                               </div>
                             </th>
@@ -2217,10 +2213,10 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                 <span>Feedback</span>
                               </div>
                             </th>
-                      </tr>
-                    </thead>
-                        <tbody className="divide-y divide-gray-100">
-                      {filteredTemplate2Patients.map((patient, index) => (
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {filteredTemplate2Patients.map((patient, index) => (
                             <tr
                               key={`template2-patient-${patient.patient_id || index}`}
                               className="hover:bg-purple-50/50 transition-colors duration-150"
@@ -2283,7 +2279,6 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                 <div className="text-sm text-gray-700 whitespace-nowrap" title={patient.DOB || "N/A"}>
                                   {patient.DOB || "N/A"}
                                 </div>
-                               
                               </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div
@@ -2313,7 +2308,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                 )}
                               </td>
                               <td className="px-4 py-3 border-r border-gray-100">
-                            <Badge 
+                                <Badge 
                                   variant="outline"
                                   className={`text-xs font-medium px-2 py-1 rounded-full border ${
                                     patient.Call_Status === "called"
@@ -2328,8 +2323,8 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                     : patient.Call_Status === "failed"
                                       ? "❌ Failed"
                                       : "⏳ Not Called"}
-                            </Badge>
-                          </td>
+                                </Badge>
+                              </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700">
                                   <div className="truncate" title={patient.postTreatment_Notes || "N/A"}>
@@ -2338,14 +2333,14 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                         ? `${String(patient.postTreatment_Notes).substring(0, 40)}...`
                                         : String(patient.postTreatment_Notes)
                                       : "N/A"}
-                            </div>
+                                  </div>
                                   {patient.postTreatment_Notes && String(patient.postTreatment_Notes).length > 40 && (
                                     <button
                                       type="button"
-                                       className="text-xs text-purple-600 hover:text-purple-800 hover:underline mt-1 flex items-center space-x-1"
+                                      className="text-xs text-purple-600 hover:text-purple-800 hover:underline mt-1 flex items-center space-x-1"
                                       onClick={() =>
                                         openNotesDialog(
-                                           `Post Treatment Notes - ${patient.firstName || ""} ${patient.lastName || ""}`.trim(),
+                                          `Post Treatment Notes - ${patient.firstName || ""} ${patient.lastName || ""}`.trim(),
                                           String(patient.postTreatment_Notes),
                                         )
                                       }
@@ -2354,8 +2349,8 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                       <span>View Full</span>
                                     </button>
                                   )}
-                            </div>
-                          </td>
+                                </div>
+                              </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700">
                                   <div className="truncate" title={patient.Treatment || "N/A"}>
@@ -2382,7 +2377,6 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                   )}
                                 </div>
                               </td>
-
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700">
                                   <div className="truncate" title={patient.postTreatment_Prescription || "N/A"}>
@@ -2391,8 +2385,8 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                         ? `${String(patient.postTreatment_Prescription).substring(0, 40)}...`
                                         : String(patient.postTreatment_Prescription)
                                       : "N/A"}
-                            </div>
-                                {patient.postTreatment_Prescription &&
+                                  </div>
+                                  {patient.postTreatment_Prescription &&
                                     String(patient.postTreatment_Prescription).length > 40 && (
                                       <button
                                         type="button"
@@ -2408,8 +2402,8 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                         <span>View Full</span>
                                       </button>
                                     )}
-                            </div>
-                          </td>
+                                </div>
+                              </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700">
                                   <div className="truncate" title={patient.followUp_Notes || "N/A"}>
@@ -2419,7 +2413,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                         : String(patient.followUp_Notes)
                                       : "N/A"}
                                   </div>
-                                   {patient.followUp_Notes && String(patient.followUp_Notes).length > 40 && (
+                                  {patient.followUp_Notes && String(patient.followUp_Notes).length > 40 && (
                                     <button
                                       type="button"
                                       className="text-xs text-purple-600 hover:text-purple-800 hover:underline mt-1 flex items-center space-x-1"
@@ -2434,9 +2428,8 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                       <span>View Full</span>
                                     </button>
                                   )}
-          
-                            </div>
-                          </td>
+                                </div>
+                              </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div className="text-sm text-gray-700">
                                   <div className="truncate" title={patient.followUp_Appointment || "N/A"}>
@@ -2446,25 +2439,24 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                         : String(patient.followUp_Appointment)
                                       : "N/A"}
                                   </div>
-          
-                            </div>
-                          </td>
+                                </div>
+                              </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div
                                   className="text-sm text-gray-700 truncate"
                                   title={patient.updated_at ? new Date(patient.updated_at).toLocaleDateString() : "N/A"}
                                 >
                                   {patient.updated_at ? new Date(patient.updated_at).toLocaleDateString() : "N/A"}
-                            </div>
-                          </td>
+                                </div>
+                              </td>
                               <td className="px-4 py-3 border-r border-gray-100">
                                 <div
                                   className="text-sm text-gray-700 truncate"
                                   title={patient.postFollowup_Status || "N/A"}
                                 >
                                   {patient.postFollowup_Status || "N/A"}
-                            </div>
-                          </td>
+                                </div>
+                              </td>
                               <td className="px-4 py-3">
                                 <div className="text-sm text-gray-700">
                                   <div className="truncate" title={patient.Feedback || "N/A"}>
@@ -2473,7 +2465,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                         ? `${String(patient.Feedback).substring(0, 30)}...`
                                         : String(patient.Feedback)
                                       : "N/A"}
-                            </div>
+                                  </div>
                                   {patient.Feedback && String(patient.Feedback).length > 30 && (
                                     <button
                                       type="button"
@@ -2491,13 +2483,11 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                                   )}
                                 </div>
                               </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    </table>
-                  </div>
-                  
-             
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               )}
@@ -2573,11 +2563,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
             </CardContent>
           </Card>
         )}
-
-    
-
-     
-                    </div>
+      </div>
 
       {/* Notes Dialog */}
       <Dialog open={isNotesDialogOpen} onOpenChange={setIsNotesDialogOpen}>
@@ -2588,7 +2574,7 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
           </DialogHeader>
           <div className="max-h-[60vh] overflow-auto whitespace-pre-wrap break-words text-sm">
             {notesDialogContent || "N/A"}
-                    </div>
+          </div>
         </DialogContent>
       </Dialog>
     </AuthenticatedLayout>
