@@ -405,7 +405,7 @@ ${sections.length > 4 ? `\n📝 ADDITIONAL NOTES:\n${sections.slice(4).join(', '
         // Format the batch call data to ensure it goes to handle_retell_api_format in backend
         const batchCallData = {
           name: `Template1 Batch Call - ${new Date().toISOString().split('T')[0]}`,
-          trigger_timestamp: Date.now() + (2 * 60 * 60 * 1000), // 2 hours from now
+         // trigger_timestamp: Date.now() + (2 * 60 * 60 * 1000), // 2 hours from now
           from_number: batchCalls[0]?.from_number || "+19728338727",
           tasks: batchCalls.map((call) => {
             const { patientData, isTemplate1, ...dynamicVars } = call.metadata || {}
@@ -917,6 +917,7 @@ ${sections.length > 4 ? `\n📝 ADDITIONAL NOTES:\n${sections.slice(4).join(', '
                   },
                   body: JSON.stringify({
                       action: "manage",
+                      mode:"append",
                       data: patientUpdate,
                   }),
                   },
@@ -1703,7 +1704,6 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
                             </th>
                             <th className="w-[130px] px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-100">
                               <div className="flex items-center space-x-1">
-                                <PhoneCall className="w-3 h-3" />
                                 <span>Phone</span>
                               </div>
                             </th>
