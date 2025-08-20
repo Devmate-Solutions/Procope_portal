@@ -33,9 +33,9 @@ export function Navbar() {
         <div className="flex items-center space-x-4">
          
           {user && (
+           
             <div className="flex items-center space-x-2">
-             <Image src={logo} alt="Logo" width={100} height={100} className="rounded-full" />
-             
+              <Image src={logo} alt="Logo" width={100} height={100} className="rounded-full" />
             </div>
           )}
         
@@ -43,8 +43,12 @@ export function Navbar() {
         
         <div className="flex items-center space-x-4">
           {user && (
+             
+              // add styling to workspaceId
             <div className="flex items-center space-x-3">
               <div className="flex items-center space-x-2">
+               
+                <span className="text-sm text-black-500 font-medium px-2 py-1 bg-white-100 rounded">{user.workspaceId}</span>
                 <User className="h-4 w-4 text-gray-500" />
                 <div className="text-sm">
                   <div className="font-medium text-gray-900">

@@ -73,6 +73,69 @@ async function makeAuthenticatedRequest(endpoint: string, options: RequestInit =
     throw error;
   }
 }
+async function makeRequest(endpoint: string, options: RequestInit = {}) {
+  const token = getStoredToken();
+  
+  // if (!token) {
+  //   const error = new Error('No authentication token found. Please log in.');
+  //   console.warn(`Auth Error for ${endpoint}:`, error.message);
+  //   throw error;
+  // }
+
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+
+  try {
+    console.log(`Making request to: ${AWS_API_BASE}${endpoint}`);
+    
+    const response = await fetch(`${AWS_API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+    });
+
+    console.log(`Response status: ${response.status}`);
+
+    if (!response.ok) {
+      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorData.message || errorMessage;
+      } catch (e) {
+        // If response is not JSON, use status text
+        const errorText = await response.text().catch(() => '');
+        if (errorText) {
+          errorMessage = errorText;
+        }
+      }
+      
+      // Special handling for 502 errors
+      if (response.status === 502) {
+        errorMessage = 'Backend service temporarily unavailable (502 Bad Gateway). Please try again in a moment.';
+      }
+      
+      console.warn(`API Warning for ${endpoint}:`, errorMessage);
+      const error = new Error(errorMessage);
+      error.name = 'APIError';
+      throw error;
+    }
+
+    const data = await response.json();
+    console.log('Response data:', data);
+    return data;
+    
+  } catch (error) {
+    // Only log as error if it's not an expected API error
+    if (error instanceof Error && error.name === 'APIError') {
+      // Already logged as warning above
+    } else {
+      console.error(`Network Error for ${endpoint}:`, error);
+    }
+    throw error;
+  }
+}
 
 // Get calls with filters
 export async function getCalls(filters: any = {}) {
@@ -392,16 +455,39 @@ export async function deleteUser(email: string) {
   }
 }
 
-export async function resetUserPassword(email: string, newPassword: string, isAdmin: boolean = false) {
+export async function resetUserPassword(email: string, newPassword: string, workspaceId: string, isAdmin: boolean = false) {
   try {
     const endpoint = isAdmin ? '/users/admin/reset-password' : '/users/user/reset-password';
-    return await makeAuthenticatedRequest(endpoint, {
-      method: 'POST',
-      body: JSON.stringify({ 
-        user_email: email, 
-        new_password: newPassword 
-      }),
-    });
+    // return await makeAuthenticatedRequest(endpoint, {
+    //   method: 'POST',
+    //   body: JSON.stringify({ 
+    //     user_email: email, 
+    //     new_password: newPassword,
+    //     workspace_id: workspaceId
+    //   }),
+    // });
+     
+    if (isAdmin) {
+      // Authenticated request for admin
+      return await makeAuthenticatedRequest(endpoint, {
+        method: 'POST',
+        body: JSON.stringify({
+          user_email: email,
+          new_password: newPassword,
+          workspace_id: workspaceId
+        }),
+      });
+    } else {
+      // Regular request for non-admin users
+      return await makeRequest(endpoint, {
+        method: 'POST',
+        body: JSON.stringify({
+          user_email: email,
+          new_password: newPassword,
+          workspace_id: workspaceId
+        }),
+      });
+    }
   } catch (error) {
     console.error('Failed to reset password:', error);
     throw error;

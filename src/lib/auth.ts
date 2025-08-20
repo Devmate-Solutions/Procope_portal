@@ -53,7 +53,7 @@ export function hasPageAccess(user: UserProfile | null, page: string): boolean {
   return false;
 }
 
-// Get all accessible pages for a user
+// Get all accessible pages for a user//
 export function getAccessiblePages(user: UserProfile | null): string[] {
   if (!user || !user.allowedPages) return [];
   
