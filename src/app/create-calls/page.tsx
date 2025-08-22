@@ -99,6 +99,9 @@ export default function CreateCallsPage() {
   const [notesDialogTitle, setNotesDialogTitle] = useState("")
   const [notesDialogContent, setNotesDialogContent] = useState("")
 
+  // Drag and drop state
+  const [isDragOver, setIsDragOver] = useState(false)
+
   const openNotesDialog = (title: string, content: string) => {
     setNotesDialogTitle(title)
     
@@ -1269,10 +1272,7 @@ ${sections.length > 4 ? `\n📝 ADDITIONAL NOTES:\n${sections.slice(4).join(', '
     }
   }
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
+  const processFile = (file: File) => {
     if (file.type !== "text/csv" && !file.name.endsWith(".csv")) {
       setError("Please select a CSV file")
       return
@@ -1291,6 +1291,32 @@ ${sections.length > 4 ? `\n📝 ADDITIONAL NOTES:\n${sections.slice(4).join(', '
       setError("Failed to read CSV file")
     }
     reader.readAsText(file)
+  }
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    processFile(file)
+  }
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    setIsDragOver(true)
+  }
+
+  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    setIsDragOver(false)
+  }
+
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    setIsDragOver(false)
+    
+    const files = event.dataTransfer.files
+    if (files.length > 0) {
+      processFile(files[0])
+    }
   }
 
   const downloadCsvTemplate = () => {
@@ -2551,11 +2577,22 @@ Ayaz,Momin,20/3/1983,19293900101,gave anesthesia for surgery,was told to not eat
               {/* File Upload Option */}
               <div className="space-y-3">
                 <Label>Upload CSV File</Label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                <div 
+                  className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                    isDragOver 
+                      ? "border-blue-400 bg-blue-50" 
+                      : "border-gray-300 hover:border-gray-400"
+                  }`}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                >
                   <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" id="csvFileInput" />
                   <label htmlFor="csvFileInput" className="cursor-pointer">
-                    <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                    <p className="text-sm text-gray-600 mb-1">Click to upload CSV file or drag and drop</p>
+                    <Upload className={`h-8 w-8 mx-auto mb-2 ${isDragOver ? "text-blue-500" : "text-gray-400"}`} />
+                    <p className={`text-sm mb-1 ${isDragOver ? "text-blue-700" : "text-gray-600"}`}>
+                      {isDragOver ? "Drop CSV file here" : "Click to upload CSV file or drag and drop"}
+                    </p>
                     <p className="text-xs text-gray-500">
                       {isTemplate1User ? "Patient data CSV format only" : "CSV files only"}
                     </p>
