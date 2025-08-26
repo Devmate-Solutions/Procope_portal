@@ -79,7 +79,7 @@ function generateFollowUpDate(daysFromNow = 14): string {
 }
 
 // Unified API configuration based on user organization
-const getApiConfig = (isTemplate1User: boolean, isTemplate2User: boolean) => {
+const getApiConfig = (isTemplate1User: boolean, isTemplate2User: boolean, isOrasurgUser?: boolean) => {
   if (isTemplate1User) {
     return {
       endpoint: "https://n8yh3flwsc.execute-api.us-east-1.amazonaws.com/prod/api/nomads/patients",
@@ -90,6 +90,12 @@ const getApiConfig = (isTemplate1User: boolean, isTemplate2User: boolean) => {
     return {
       endpoint: "https://n8yh3flwsc.execute-api.us-east-1.amazonaws.com/prod/api/anesthesia/patients",
       type: "anesthesia"
+    }
+  }
+  if (isOrasurgUser) {
+    return {
+      endpoint: "https://n8yh3flwsc.execute-api.us-east-1.amazonaws.com/prod/api/orasurg/patients",
+      type: "orasurg"
     }
   }
   return null
