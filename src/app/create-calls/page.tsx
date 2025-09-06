@@ -79,20 +79,20 @@ function generateFollowUpDate(daysFromNow = 14): string {
 }
 
 // Unified API configuration based on user organization
-const getApiConfig = (isTemplate1User: boolean, isTemplate2User: boolean, isOrasurgUser?: boolean) => {
-  if (isTemplate1User) {
+const getApiConfig = (workspaceId: string) => {
+  if (workspaceId === "org_ixDZbxlYCDnhbFja") {
     return {
       endpoint: "https://n8yh3flwsc.execute-api.us-east-1.amazonaws.com/prod/api/nomads/patients",
       type: "nomads"
     }
   }
-  if (isTemplate2User) {
+  if (workspaceId === "org_xtaZcKQ1FTnmdEOV") {
     return {
       endpoint: "https://n8yh3flwsc.execute-api.us-east-1.amazonaws.com/prod/api/anesthesia/patients",
       type: "anesthesia"
     }
   }
-  if (isOrasurgUser) {
+  if (workspaceId === "org_F0XFDjy0YkCvEr8r") {
     return {
       endpoint: "https://n8yh3flwsc.execute-api.us-east-1.amazonaws.com/prod/api/orasurg/patients",
       type: "orasurg"
@@ -246,7 +246,7 @@ export default function CreateCallsPage() {
     
     if (title.toLowerCase().includes('follow up notes') && content && content !== "N/A") {
       const sections = content.split(',').map(section => section.trim())
-      const formattedContent = `
+      const formattedContent = `  
 📋 FOLLOW-UP NOTES BREAKDOWN:
 
 1️⃣ SUMMARY:
@@ -314,7 +314,7 @@ ${sections.length > 4 ? `\n📝 ADDITIONAL NOTES:\n${sections.slice(4).join(', '
     try {
       setLoadingPatients(true)
       
-      const apiConfig = getApiConfig(isTemplate1User || false, isTemplate2User || false)
+      const apiConfig = getApiConfig(currentUser?.workspaceId || "")
       if (!apiConfig) {
         setError("Invalid user configuration")
         return
@@ -478,7 +478,7 @@ ${sections.length > 4 ? `\n📝 ADDITIONAL NOTES:\n${sections.slice(4).join(', '
           const batchResponse = await processBatchCalls(batchCalls, isTemplate1User || false, isTemplate2User || false)
           
           if (batchResponse.success) {
-            const apiConfig = getApiConfig(isTemplate1User || false, isTemplate2User || false)!
+            const apiConfig = getApiConfig(currentUser?.workspaceId || "")!
             const updatedCount = await updatePatientDatabase(batchCalls, batchResponse, apiConfig)
             
             const successMessage = updatedCount > 0 
@@ -800,7 +800,7 @@ ${sections.length > 4 ? `\n📝 ADDITIONAL NOTES:\n${sections.slice(4).join(', '
           const batchResponse = await processBatchCalls(calls, isTemplate1User || false, isTemplate2User || false)
           
           if (batchResponse.success) {
-            const apiConfig = getApiConfig(isTemplate1User || false, isTemplate2User || false)!
+            const apiConfig = getApiConfig(currentUser?.workspaceId || "")!
             const updatedCount = await updatePatientDatabase(calls, batchResponse, apiConfig)
             
             const successMessage = updatedCount > 0
