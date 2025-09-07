@@ -100,33 +100,34 @@ export function Sidebar({ className }: SidebarProps) {
   )
 
   return (
-    <div className={cn("pb-12 w-64", className)}>
-      <div className="space-y-4 py-4">
-        <div className="px-3 py-2">
-          <div className="space-y-1">
-            {accessibleItems.map((item) => {
-              const Icon = item.icon
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors",
-                    pathname === item.href 
-                      ? "bg-accent text-accent-foreground" 
-                      : "text-muted-foreground"
-                  )}
-                >
-                  <Icon className="mr-2 h-4 w-4" />
-                  {item.name}
-                </Link>
-              )
-            })}
-          </div>
+    <div className={cn("w-64 overflow-y-auto", className)}>
+      <div className="p-8">
+        <div className="space-y-2">
+          {accessibleItems.map((item) => {
+            const Icon = item.icon
+            const isActive = pathname === item.href
+            
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "flex items-center rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200 group",
+                  isActive 
+                    ? "bg-blue-50 text-blue-700 border-r-2 border-blue-500" 
+                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                )}
+              >
+                <Icon className={cn(
+                  "mr-3 h-5 w-5 transition-colors",
+                  isActive ? "text-blue-600" : "text-gray-400 group-hover:text-gray-600"
+                )} />
+                <span className="truncate">{item.name}</span>
+              </Link>
+            )
+          })}
         </div>
       </div>
-      
-    
     </div>
   )
 }

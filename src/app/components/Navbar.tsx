@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { LogOut, User, Building } from 'lucide-react'
 import { getCurrentUser, logout, type UserProfile } from '@/lib/auth'
 import Image from 'next/image'
-import logo from '../../../public/mydent.png'
+import logo from '../../../public/Procope.png'
 export function Navbar() {
   const [user, setUser] = useState<UserProfile | null>(null)
   const router = useRouter()
@@ -28,14 +28,14 @@ export function Navbar() {
   }
 
   return (
-    <nav className="bg-white border-b border-gray-200 px-6 py-4">
+    <nav className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 px-6 py-4 z-50">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
          
           {user && (
            
             <div className="flex items-center space-x-2">
-              <Image src={logo} alt="Logo" width={100} height={100} className="rounded-full" />
+              <Image src={logo} alt="Logo" width={70} height={70} className="rounded-full" />
             </div>
           )}
         

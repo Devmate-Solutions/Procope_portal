@@ -52,9 +52,9 @@ export function AuthenticatedLayout({ children, requiredPage }: AuthenticatedLay
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <div className="flex">
-        <Sidebar className="fixed left-0 top-16 h-[calc(100vh-4rem)] bg-white border-r" />
-        <main className="flex-1 ml-64 p-6 overflow-x-hidden">
+      <div className="flex pt-16">
+        <Sidebar className="fixed left-0 top-16 h-[calc(100vh-4rem)] bg-white border-r shadow-sm" />
+        <main className="flex-1 ml-64 pt-6 px-6 pb-6 overflow-x-hidden">
           {children}
         </main>
       </div>
