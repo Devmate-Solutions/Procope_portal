@@ -116,7 +116,7 @@ const mapPatientData = (patientData: any, callStatus: string) => {
     Call_Status: callStatus,
     followUp_Notes: patientData.followup_notes || patientData["followup_notes"] || "",
     followUp_Date: patientData.followup_date || patientData["followup_date"] || generateFollowUpDate(),
-    postFollowup_Status: patientData.postfollowup_status || patientData["postfollowup_status"] || "not-called",
+    postFollowup_Status: patientData.postfollowup_status || patientData["postfollowup_status"] || "",
     Feedback: patientData.feedback || patientData["feedback"] || "",
   }
 }
@@ -129,7 +129,7 @@ const processBatchCalls = async (calls: CallData[], isTemplate1User: boolean, is
 
   const batchCallData = {
     name: `${isTemplate1User ? 'Template1' : 'Template2'} Batch Call - ${new Date().toISOString().split('T')[0]}`,
-    trigger_timestamp: Date.now() + 60*60 * 1000 *2, // 1 hour from now
+  //  trigger_timestamp: Date.now() + 60*60 * 1000 *2, // 1 hour from now
     from_number: calls[0]?.from_number || "+19728338727",
     tasks: calls.map((call) => {
       const { patientData, isTemplate1, isTemplate2, ...dynamicVars } = call.metadata || {}
