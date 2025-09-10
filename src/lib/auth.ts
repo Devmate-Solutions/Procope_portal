@@ -25,7 +25,8 @@ export const PAGE_ACCESS_TEMPLATES = {
   basic: ['dashboard', 'call-history',  'create-calls','analytics'],
   scribe: ['scribe', 'scribe-history'],
   claims: [  'claims-archive','claims-submit'],
-  usermanage: ['user-management']
+  usermanage: ['user-management'],
+  hotel: ['analytics', 'clients', 'hotels']
 };
 // export const PAGE_ACCESS_TEMPLATES = {
 //   template1: ['basic', 'dashboard', 'call-history', 'analytics', 'create-calls', 'user-management'],
@@ -89,7 +90,17 @@ export function decodeToken(token: string): UserProfile | null {
       payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
     } else {
       // Base64-encoded JSON format (AWS system)
-      payload = JSON.parse(Buffer.from(token, 'base64').toString());
+      try {
+        payload = JSON.parse(Buffer.from(token, 'base64').toString());
+      } catch (base64Error) {
+        // If base64 decoding fails, try parsing as plain JSON
+        try {
+          payload = JSON.parse(token);
+        } catch (jsonError) {
+          console.error('Failed to parse token as JSON:', jsonError);
+          return null;
+        }
+      }
     }
 
     // Check if token is expired
@@ -105,6 +116,7 @@ export function decodeToken(token: string): UserProfile | null {
       return null;
     }
 
+    console.log('Decoded user payload:', payload);
     return payload as UserProfile;
   } catch (error) {
     console.error('Failed to decode token:', error);

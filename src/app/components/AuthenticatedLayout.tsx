@@ -18,8 +18,10 @@ export function AuthenticatedLayout({ children, requiredPage }: AuthenticatedLay
   const pathname = usePathname()
 
   useEffect(() => {
+    console.log('AuthenticatedLayout - Checking authentication for page:', requiredPage)
     const currentUser = getCurrentUser()
-    
+    console.log('AuthenticatedLayout - Current user:', currentUser)
+
     if (!currentUser) {
       console.log('❌ No user found, redirecting to login')
       router.push('/login')
@@ -29,10 +31,17 @@ export function AuthenticatedLayout({ children, requiredPage }: AuthenticatedLay
     // Check page access if required
     if (requiredPage && !hasPageAccess(currentUser, requiredPage)) {
       console.log(`❌ User doesn't have access to page: ${requiredPage}`)
-      router.push('/dashboard') // Redirect to dashboard if no access
+      console.log('User allowedPages:', currentUser.allowedPages)
+
+      // For hotel users, redirect to analytics instead of dashboard
+      const hasHotelAccess = currentUser.allowedPages?.includes('hotel')
+      const redirectPage = hasHotelAccess ? '/analytics' : '/dashboard'
+      console.log('Redirecting to:', redirectPage)
+      router.push(redirectPage)
       return
     }
 
+    console.log('✅ Authentication successful, setting user')
     setUser(currentUser)
     setIsLoading(false)
   }, [router, requiredPage, pathname])

@@ -3,7 +3,7 @@ import { AuthenticatedLayout } from "../components/AuthenticatedLayout"
 
 export default function Dashboard() {
   return (
-    <AuthenticatedLayout>
+    <AuthenticatedLayout requiredPage="analytics">
       <div className="min-h-screen bg-white">
         <main className="p-6">
           <div className="max-w-7xl mx-auto space-y-6">

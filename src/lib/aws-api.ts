@@ -535,10 +535,10 @@ export function getNumbers(count: number = 5, type: 'from' | 'to' = 'to', format
 // Demo function to validate phone number format
 export function validateNumber(phoneNumber: string): { isValid: boolean; format: string; country?: string } {
   console.log(`Validating phone number: ${phoneNumber}`);
-  
+
   // Remove all non-digit characters except +
   const cleaned = phoneNumber.replace(/[^\d+]/g, '');
-  
+
   // Check for US format
   if (cleaned.match(/^\+?1\d{10}$/)) {
     return {
@@ -547,7 +547,7 @@ export function validateNumber(phoneNumber: string): { isValid: boolean; format:
       country: 'United States'
     };
   }
-  
+
   // Check for international format
   if (cleaned.match(/^\+\d{7,15}$/)) {
     const countryMap: { [key: string]: string } = {
@@ -558,7 +558,7 @@ export function validateNumber(phoneNumber: string): { isValid: boolean; format:
       '+86': 'China',
       '+91': 'India'
     };
-    
+
     const countryCode = cleaned.substring(0, 3);
     return {
       isValid: true,
@@ -566,9 +566,390 @@ export function validateNumber(phoneNumber: string): { isValid: boolean; format:
       country: countryMap[countryCode] || 'Unknown'
     };
   }
-  
+
   return {
     isValid: false,
     format: 'invalid'
   };
 }
+
+// API Configuration
+const API_URL = "https://n8yh3flwsc.execute-api.us-east-1.amazonaws.com/prod/api/stablegold_calling";
+
+const HEADERS = {
+  'Content-Type': 'application/json',
+};
+
+// Dashboard statistics interface
+export interface DashboardStats {
+  totalHotels: number;
+  totalClients: number;
+}
+
+// Backend API response format (snake_case)
+export interface HotelApiResponse {
+  hotel_id?: string;
+  hotel_name: string;
+  street_address?: string;
+  city: string;
+  estate: string;
+  zip_code?: string;
+  available_king: string;
+  available_queen: string;
+  price: string;
+  checkin_time: string;
+  checkout_time: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ClientApiResponse {
+  client_id?: string;
+  first_name: string;
+  last_name: string;
+  phone_number: string;
+  reservation_hotel: string;
+  reservation_date: string;
+  checkin_time: string;
+  call_date: string;
+  call_summary: string;
+  to_follow_up: boolean;
+  confirmation_status: string;
+  occupants: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// UI display format (title case for forms)
+export interface Hotel {
+  hotel_id?: string;
+  'Hotel Name': string;
+  'Street Address'?: string;
+  'City': string;
+  'State': string;
+  'Zip Code'?: string;
+  'Double Bed Available': string;
+  'Single Bed Available': string;
+  'Reservations': string;
+  'Waiting List': string;
+  'Price': string;
+  'Checkin Time': string;
+  'Checkout Time': string;
+}
+
+export interface Client {
+  client_id?: string;
+  'First Name': string;
+  'Last Name': string;
+  'Phone Number': string;
+  'Reservation Hotel': string;
+  'Reservation Date': string;
+  'Checkin Time': string;
+  'Call Date': string;
+  'Call Summary': string;
+  'To Follow Up': boolean;
+  'Confirmation Status': string;
+  'Occupants': string;
+}
+
+// Hotel API Functions
+export const hotelAPI = {
+  // Add a new hotel
+  async addHotel(hotelData: Hotel) {
+    // Convert title case to snake_case for API
+    const apiData = {
+      hotel_name: hotelData['Hotel Name'],
+      street_address: hotelData['Street Address'],
+      city: hotelData['City'],
+      estate: hotelData['State'],
+      zip_code: hotelData['Zip Code'],
+      available_king: hotelData['Double Bed Available'],
+      available_queen: hotelData['Single Bed Available'],
+      price: hotelData['Price'],
+      checkin_time: hotelData['Checkin Time'],
+      checkout_time: hotelData['Checkout Time']
+    };
+
+    const payload = {
+      action: "manage",
+      entity: "hotels",
+      mode: "append",
+      data: apiData
+    };
+
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: HEADERS,
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  // Query hotels
+  async getHotels(filters?: { hotel_name?: string; city?: string; estate?: string }) {
+    const payload = {
+      action: "query",
+      entity: "hotels",
+      ...filters
+    };
+
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: HEADERS,
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  // Update existing hotel
+  async updateHotel(hotelId: string, hotelData: Hotel) {
+    // Convert title case to snake_case for API
+    const apiData = {
+      "Hotel Name": hotelData['Hotel Name'],
+      hotel_id: hotelId,
+      street_address: hotelData['Street Address'] || '',
+      city: hotelData['City'],
+      estate: hotelData['State'],
+      zip_code: hotelData['Zip Code'] || '',
+      available_king: hotelData['Double Bed Available'],
+      available_queen: hotelData['Single Bed Available'],
+      price: hotelData['Price'],
+      checkin_time: hotelData['Checkin Time'],
+      checkout_time: hotelData['Checkout Time']
+    };
+
+    const payload = {
+      entity: "hotels",
+      action: "manage",
+      mode: "update",
+      data: apiData
+    };
+
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: HEADERS,
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  // Bulk add hotels
+  async addBulkHotels(hotelsData: Hotel[]) {
+    const payload = {
+      action: "manage",
+      entity: "hotels",
+      mode: "upsert",
+      data: hotelsData
+    };
+
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: HEADERS,
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  // Edit existing hotel (using POST API with action:manage, mode:update)
+  async editHotel(hotelId: string, hotelData: Hotel) {
+    const payload = {
+      entity: "hotels",
+      action: "manage",
+      mode: "update",
+      data: {
+        "Hotel Name": hotelData['Hotel Name'],
+        hotel_id: hotelId,
+        street_address: hotelData['Street Address'] || '',
+        city: hotelData['City'],
+        estate: hotelData['State'],
+        zip_code: hotelData['Zip Code'] || '',
+        available_king: hotelData['Double Bed Available'],
+        available_queen: hotelData['Single Bed Available'],
+        price: hotelData['Price'],
+        checkin_time: hotelData['Checkin Time'],
+        checkout_time: hotelData['Checkout Time']
+      }
+    };
+
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: HEADERS,
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  }
+};
+
+// Client API Functions
+export const clientAPI = {
+  // Add a new client
+  async addClient(clientData: Client) {
+    // Convert title case to snake_case for API
+    const apiData = {
+      first_name: clientData['First Name'],
+      last_name: clientData['Last Name'],
+      phone_number: clientData['Phone Number'],
+      reservation_hotel: clientData['Reservation Hotel'],
+      reservation_date: clientData['Reservation Date'],
+      checkin_time: clientData['Checkin Time'],
+      call_date: clientData['Call Date'],
+      call_summary: clientData['Call Summary'],
+      to_follow_up: clientData['To Follow Up'],
+      confirmation_status: clientData['Confirmation Status'] || 'pending',
+      occupants: clientData['Occupants'] || '1'
+    };
+
+    const payload = {
+      action: "manage",
+      entity: "clients",
+      mode: "append",
+      data: apiData
+    };
+
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: HEADERS,
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  // Query clients
+  async getClients(filters?: { first_name?: string; last_name?: string; phone?: string }) {
+    const payload = {
+      action: "query",
+      entity: "clients",
+      ...filters
+    };
+
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: HEADERS,
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  // Update existing client
+  async updateClient(clientId: string, firstName: string, lastName: string, fields: Partial<Client>) {
+    const payload = {
+      action: "update",
+      entity: "clients",
+      updates: [{
+        client_id: clientId,
+        first_name: firstName,
+        last_name: lastName,
+        fields: fields
+      }]
+    };
+
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: HEADERS,
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  // Edit existing client (using update action that backend supports)
+  async editClient(clientId: string, clientData: Client) {
+    // Convert title case to snake_case for API fields
+    const fields = {
+      phone_number: clientData['Phone Number'],
+      reservation_hotel: clientData['Reservation Hotel'],
+      reservation_date: clientData['Reservation Date'],
+      checkin_time: clientData['Checkin Time'],
+      call_date: clientData['Call Date'],
+      call_summary: clientData['Call Summary'],
+      to_follow_up: clientData['To Follow Up'],
+      confirmation_status: clientData['Confirmation Status'] || 'pending',
+      occupants: clientData['Occupants'] || '1'
+    };
+
+    const payload = {
+      action: "update",
+      entity: "clients",
+      updates: [{
+        client_id: clientId,
+        first_name: clientData['First Name'],
+        last_name: clientData['Last Name'],
+        fields: fields
+      }]
+    };
+
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: HEADERS,
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  // Follow up with client (mock API for now)
+  async followUpClient(clientData: Client) {
+    try {
+      console.log('Mock follow-up API call for client:', clientData);
+
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Mock successful follow-up
+      return {
+        success: true,
+        message: `Follow-up initiated for ${clientData['First Name']} ${clientData['Last Name']}`,
+        followUpId: `followup_${Date.now()}`
+      };
+    } catch (error) {
+      console.error('Failed to initiate follow-up:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Follow-up failed'
+      };
+    }
+  }
+};

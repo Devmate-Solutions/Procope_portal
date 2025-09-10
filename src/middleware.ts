@@ -1,6 +1,24 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+// Simple token decode function for middleware
+function decodeTokenForMiddleware(token: string) {
+  try {
+    if (!token) return null
+
+    // Try base64 decoding first
+    try {
+      const payload = JSON.parse(Buffer.from(token, 'base64').toString())
+      return payload
+    } catch {
+      // Try parsing as plain JSON
+      return JSON.parse(token)
+    }
+  } catch {
+    return null
+  }
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
@@ -22,9 +40,14 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // If token exists and on login page, redirect to dashboard
+  // If token exists and on login page, redirect based on user permissions
   if (token && pathname === '/login') {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+    const user = decodeTokenForMiddleware(token)
+    const hasHotelAccess = user?.allowedPages?.includes('hotel')
+
+    // Redirect hotel users to analytics, others to dashboard
+    const redirectPath = hasHotelAccess ? '/analytics' : '/dashboard'
+    return NextResponse.redirect(new URL(redirectPath, request.url))
   }
 
   return NextResponse.next()

@@ -15,7 +15,8 @@ import {
   Headphones,
   NotepadText,
   UserPlus,
-  FileText
+  FileText,
+  Building
 } from 'lucide-react';
 import { getCurrentUser, hasPageAccess, type UserProfile } from '@/lib/auth';
 import { getDashboardData, getCalls, getAnalytics } from '@/lib/aws-api';
@@ -219,149 +220,221 @@ export default function DashboardPage() {
 
           {/* Navigation Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {hasPageAccess(user, 'analytics') && (
-              <Link href="/analytics">
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-3">
-                      <BarChart3 className="h-6 w-6 text-[#1F4280]" />
-                      <span>Analytics</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600">
-                      View comprehensive call analytics, performance metrics, and insights.
-                    </p>
-                  </CardContent>
-                </Card>
-              </Link>
-            )}
+            {/* Check if user has "hotel" access - if so, only show hotel-related pages */}
+            {(() => {
+              const hasHotelAccess = user?.allowedPages?.includes('hotel')
+              const hotelPages = ['analytics', 'clients', 'hotels']
 
-            {hasPageAccess(user, 'create-calls') && (
-              <Link href="/create-calls">
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-3">
-                      <PhoneCall className="h-6 w-6 text-green-600" />
-                      <span>Create Calls</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600">
-                      Initiate outbound calls and manage call campaigns.
-                    </p>
-                  </CardContent>
-                </Card>
-              </Link>
-            )}
+              if (hasHotelAccess) {
+                // Only show analytics, clients, and hotels for hotel users
+                return (
+                  <>
+                    {hasPageAccess(user, 'analytics') && (
+                      <Link href="/analytics">
+                        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                          <CardHeader>
+                            <CardTitle className="flex items-center space-x-3">
+                              <BarChart3 className="h-6 w-6 text-[#1F4280]" />
+                              <span>Analytics</span>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-gray-600">
+                              View comprehensive call analytics, performance metrics, and insights.
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    )}
 
-            {hasPageAccess(user, 'call-history') && (
-              <Link href="/call-history">
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-3">
-                      <History className="h-6 w-6 text-blue-600" />
-                      <span>Call History</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600">
-                      Browse and search through your complete call history.
-                    </p>
-                  </CardContent>
-                </Card>
-              </Link>
-            )}
+                    {hasPageAccess(user, 'clients') && (
+                      <Link href="/clients">
+                        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                          <CardHeader>
+                            <CardTitle className="flex items-center space-x-3">
+                              <Users className="h-6 w-6 text-blue-600" />
+                              <span>Clients</span>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-gray-600">
+                              Manage client reservations and information.
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    )}
 
-            {hasPageAccess(user, 'scribe') && (
-              <Link href="/scribe">
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-3">
-                      <NotepadText className="h-6 w-6 text-purple-600" />
-                      <span>Scribe</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600">
-                      AI-powered transcription and note-taking for calls.
-                    </p>
-                  </CardContent>
-                </Card>
-              </Link>
-            )}
+                    {hasPageAccess(user, 'hotels') && (
+                      <Link href="/hotels">
+                        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                          <CardHeader>
+                            <CardTitle className="flex items-center space-x-3">
+                              <Building className="h-6 w-6 text-green-600" />
+                              <span>Hotels</span>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-gray-600">
+                              Manage hotel information and availability.
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    )}
+                  </>
+                )
+              } else {
+                // Show all pages for non-hotel users
+                return (
+                  <>
+                    {hasPageAccess(user, 'analytics') && (
+                      <Link href="/analytics">
+                        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                          <CardHeader>
+                            <CardTitle className="flex items-center space-x-3">
+                              <BarChart3 className="h-6 w-6 text-[#1F4280]" />
+                              <span>Analytics</span>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-gray-600">
+                              View comprehensive call analytics, performance metrics, and insights.
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    )}
 
-            {hasPageAccess(user, 'scribe-history') && (
-              <Link href="/scribe-history">
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-3">
-                      <FileText className="h-6 w-6 text-indigo-600" />
-                      <span>Scribe History</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600">
-                      View and manage your transcription history.
-                    </p>
-                  </CardContent>
-                </Card>
-              </Link>
-            )}
+                    {hasPageAccess(user, 'create-calls') && (
+                      <Link href="/create-calls">
+                        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                          <CardHeader>
+                            <CardTitle className="flex items-center space-x-3">
+                              <PhoneCall className="h-6 w-6 text-green-600" />
+                              <span>Create Calls</span>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-gray-600">
+                              Initiate outbound calls and manage call campaigns.
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    )}
 
-            {hasPageAccess(user, 'user-management') && (
-              <Link href="/user-management">
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-3">
-                      <Users className="h-6 w-6 text-orange-600" />
-                      <span>User Management</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600">
-                      Manage users, roles, and permissions.
-                    </p>
-                  </CardContent>
-                </Card>
-              </Link>
-            )}
+                    {hasPageAccess(user, 'call-history') && (
+                      <Link href="/call-history">
+                        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                          <CardHeader>
+                            <CardTitle className="flex items-center space-x-3">
+                              <History className="h-6 w-6 text-blue-600" />
+                              <span>Call History</span>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-gray-600">
+                              Browse and search through your complete call history.
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    )}
 
-            {hasPageAccess(user, 'add-user') && (
-              <Link href="/add-user">
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-3">
-                      <UserPlus className="h-6 w-6 text-teal-600" />
-                      <span>Add User</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600">
-                      Add new users to the system.
-                    </p>
-                  </CardContent>
-                </Card>
-              </Link>
-            )}
+                    {hasPageAccess(user, 'scribe') && (
+                      <Link href="/scribe">
+                        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                          <CardHeader>
+                            <CardTitle className="flex items-center space-x-3">
+                              <NotepadText className="h-6 w-6 text-purple-600" />
+                              <span>Scribe</span>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-gray-600">
+                              AI-powered transcription and note-taking for calls.
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    )}
 
-            {hasPageAccess(user, 'claims-archive') && (
-              <Link href="/claims-archive">
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-3">
-                      <FileText className="h-6 w-6 text-red-600" />
-                      <span>Claims Archive</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600">
-                      View and manage archived claims.
-                    </p>
-                  </CardContent>
-                </Card>
-              </Link>
-            )}
+                    {hasPageAccess(user, 'scribe-history') && (
+                      <Link href="/scribe-history">
+                        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                          <CardHeader>
+                            <CardTitle className="flex items-center space-x-3">
+                              <FileText className="h-6 w-6 text-indigo-600" />
+                              <span>Scribe History</span>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-gray-600">
+                              View and manage your transcription history.
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    )}
+
+                    {hasPageAccess(user, 'user-management') && (
+                      <Link href="/user-management">
+                        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                          <CardHeader>
+                            <CardTitle className="flex items-center space-x-3">
+                              <Users className="h-6 w-6 text-orange-600" />
+                              <span>User Management</span>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-gray-600">
+                              Manage users, roles, and permissions.
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    )}
+
+                    {hasPageAccess(user, 'add-user') && (
+                      <Link href="/add-user">
+                        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                          <CardHeader>
+                            <CardTitle className="flex items-center space-x-3">
+                              <UserPlus className="h-6 w-6 text-teal-600" />
+                              <span>Add User</span>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-gray-600">
+                              Add new users to the system.
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    )}
+
+                    {hasPageAccess(user, 'claims-archive') && (
+                      <Link href="/claims-archive">
+                        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                          <CardHeader>
+                            <CardTitle className="flex items-center space-x-3">
+                              <FileText className="h-6 w-6 text-red-600" />
+                              <span>Claims Archive</span>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-gray-600">
+                              View and manage archived claims.
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    )}
+                  </>
+                )
+              }
+            })()}
           </div>
 
           {/* Recent Activity */}
