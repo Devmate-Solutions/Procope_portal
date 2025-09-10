@@ -129,11 +129,11 @@ const processBatchCalls = async (calls: CallData[], isTemplate1User: boolean, is
 
   const batchCallData = {
     name: `${isTemplate1User ? 'Template1' : 'Template2'} Batch Call - ${new Date().toISOString().split('T')[0]}`,
-    trigger_timestamp: Date.now() + 60*60 * 1000 *2, // 2 hour from now
+    trigger_timestamp: Date.now() + 60*60 * 1000 *2, // 1 hour from now
     from_number: calls[0]?.from_number || "+19728338727",
     tasks: calls.map((call) => {
       const { patientData, isTemplate1, isTemplate2, ...dynamicVars } = call.metadata || {}
-      return {s
+      return {
         to_number: call.to_number,
         retell_llm_dynamic_variables: dynamicVars
       }
