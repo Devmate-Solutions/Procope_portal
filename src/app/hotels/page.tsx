@@ -65,9 +65,9 @@ export default function HotelsPage() {
           'City': hotel.city,
           'State': hotel.estate,
           'Zip Code': hotel.zip_code || '',
-          'Double Bed Available': hotel.available_king,
-          'Single Bed Available': hotel.available_queen,
-          'Reservations': '', // New field - to be populated from API or calculated
+          'Double Bed': hotel.available_king,
+          'Single Bed': hotel.available_queen,
+          'price_weekly': hotel.price_weekly, // New field - to be populated from API or calculated
           'Waiting List': '', // New field - to be populated from API or calculated
           'Price': hotel.price,
           'Checkin Time': hotel.checkin_time,
@@ -359,19 +359,16 @@ export default function HotelsPage() {
                   Zip Code
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Double Bed Available
+                  Double Bed
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Single Bed Available
+                  Single Bed
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Reservations
+                  Price Weekly
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Waiting List
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Price
+                  Price Nightly
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Check-in Time
@@ -419,16 +416,13 @@ export default function HotelsPage() {
                       {renderEditableCell(hotel, 'Zip Code', hotel['Zip Code'] || '')}
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-700">
-                      {renderEditableCell(hotel, 'Double Bed Available', hotel['Double Bed Available'] || '')}
+                      {renderEditableCell(hotel, 'Double Bed', hotel['Double Bed'] || '')}
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-700">
-                      {renderEditableCell(hotel, 'Single Bed Available', hotel['Single Bed Available'] || '')}
+                      {renderEditableCell(hotel, 'Single Bed', hotel['Single Bed'] || '')}
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-700">
-                      {renderEditableCell(hotel, 'Reservations', hotel['Reservations'] || '')}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-700">
-                      {renderEditableCell(hotel, 'Waiting List', hotel['Waiting List'] || '')}
+                      {renderEditableCell(hotel, 'price_weekly', hotel['price_weekly'] || '')}
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-700">
                       {renderEditableCell(hotel, 'Price', hotel['Price'] || '')}

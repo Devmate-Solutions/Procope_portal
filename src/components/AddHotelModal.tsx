@@ -19,8 +19,8 @@ export default function AddHotelModal({ isOpen, onClose, onSubmit, loading, init
     'City': '',
     'State': '',
     'Zip Code': '',
-    'Double Bed Available': '0',
-    'Single Bed Available': '0',
+    'Double Bed': '0',
+    'Single Bed': '0',
     'Reservations': '',
     'Waiting List': '',
     'Price': '',
@@ -42,8 +42,8 @@ export default function AddHotelModal({ isOpen, onClose, onSubmit, loading, init
       'City': '',
       'State': '',
       'Zip Code': '',
-      'Double Bed Available': '0',
-      'Single Bed Available': '0',
+      'Double Bed': '0',
+      'Single Bed': '0',
       'Reservations': '',
       'Waiting List': '',
       'Price': '',
@@ -150,26 +150,26 @@ export default function AddHotelModal({ isOpen, onClose, onSubmit, loading, init
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Double Bed Available
+                  Double Bed
                 </label>
                 <input
                   type="number"
                   min="0"
-                  value={formData['Double Bed Available']}
-                  onChange={(e) => setFormData({ ...formData, 'Double Bed Available': e.target.value })}
+                  value={formData['Double Bed']}
+                  onChange={(e) => setFormData({ ...formData, 'Double Bed': e.target.value })}
                   className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-black focus:border-black"
                   placeholder="0"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Single Bed Available
+                  Single Bed
                 </label>
                 <input
                   type="number"
                   min="0"
-                  value={formData['Single Bed Available']}
-                  onChange={(e) => setFormData({ ...formData, 'Single Bed Available': e.target.value })}
+                  value={formData['Single Bed']}
+                  onChange={(e) => setFormData({ ...formData, 'Single Bed': e.target.value })}
                   className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-black focus:border-black"
                   placeholder="0"
                 />

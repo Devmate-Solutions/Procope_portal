@@ -597,6 +597,7 @@ export interface HotelApiResponse {
   available_king: string;
   available_queen: string;
   price: string;
+  price_weekly?: string;
   checkin_time: string;
   checkout_time: string;
   created_at?: string;
@@ -628,9 +629,10 @@ export interface Hotel {
   'City': string;
   'State': string;
   'Zip Code'?: string;
-  'Double Bed Available': string;
-  'Single Bed Available': string;
+  'Double Bed': string;
+  'Single Bed': string;
   'Reservations': string;
+  'price_weekly'?: string;
   'Waiting List': string;
   'Price': string;
   'Checkin Time': string;
@@ -663,9 +665,10 @@ export const hotelAPI = {
       city: hotelData['City'],
       estate: hotelData['State'],
       zip_code: hotelData['Zip Code'],
-      available_king: hotelData['Double Bed Available'],
-      available_queen: hotelData['Single Bed Available'],
+      available_king: hotelData['Double Bed'],
+      available_queen: hotelData['Single Bed'],
       price: hotelData['Price'],
+      price_weekly: hotelData['price_weekly'],
       checkin_time: hotelData['Checkin Time'],
       checkout_time: hotelData['Checkout Time']
     };
@@ -721,8 +724,8 @@ export const hotelAPI = {
       city: hotelData['City'],
       estate: hotelData['State'],
       zip_code: hotelData['Zip Code'] || '',
-      available_king: hotelData['Double Bed Available'],
-      available_queen: hotelData['Single Bed Available'],
+      available_king: hotelData['Double Bed'],
+      available_queen: hotelData['Single Bed'],
       price: hotelData['Price'],
       checkin_time: hotelData['Checkin Time'],
       checkout_time: hotelData['Checkout Time']
@@ -783,9 +786,10 @@ export const hotelAPI = {
         city: hotelData['City'],
         estate: hotelData['State'],
         zip_code: hotelData['Zip Code'] || '',
-        available_king: hotelData['Double Bed Available'],
-        available_queen: hotelData['Single Bed Available'],
+        available_king: hotelData['Double Bed'],
+        available_queen: hotelData['Single Bed'],
         price: hotelData['Price'],
+        price_weekly: hotelData['price_weekly'],
         checkin_time: hotelData['Checkin Time'],
         checkout_time: hotelData['Checkout Time']
       }
