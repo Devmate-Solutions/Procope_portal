@@ -21,7 +21,6 @@ export default function ClientsPage() {
   const [selectedClientName, setSelectedClientName] = useState<string>('');
   const [followUpLoading, setFollowUpLoading] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [waitingListFilter, setWaitingListFilter] = useState<string>('all');
   const itemsPerPage = 6;
 
   // Load clients from API
@@ -90,7 +89,7 @@ export default function ClientsPage() {
     }
   };
 
-  // Filter clients based on search, status, and waiting list
+  // Filter clients based on search and status
   const filteredClients = clients.filter(client => {
     // Search filter
     const matchesSearch = searchTerm === '' ||
@@ -102,12 +101,7 @@ export default function ClientsPage() {
     // Status filter
     const matchesStatus = statusFilter === 'all' || client['Confirmation Status'] === statusFilter;
 
-    // Waiting list filter
-    const matchesWaitingList = waitingListFilter === 'all' ||
-      (waitingListFilter === 'yes' && client['To Follow Up']) ||
-      (waitingListFilter === 'no' && !client['To Follow Up']);
-
-    return matchesSearch && matchesStatus && matchesWaitingList;
+    return matchesSearch && matchesStatus;
   });
 
   // Pagination
@@ -275,30 +269,16 @@ export default function ClientsPage() {
                 <option value="confirmed">Confirmed</option>
                 <option value="pending">Pending</option>
                 <option value="cancelled">Cancelled</option>
+                <option value="waiting">Waiting</option>
+                <option value="reserved">Reserved</option>
               </select>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <label className="text-sm font-medium text-gray-700">Waiting List:</label>
-              <select
-                value={waitingListFilter}
-                onChange={(e) => {
-                  setWaitingListFilter(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="px-3 py-2 bg-white border border-gray-300 rounded-md text-black focus:outline-none focus:ring-2 focus:ring-black"
-              >
-                <option value="all">All</option>
-                <option value="yes">Yes</option>
-                <option value="no">No</option>
-              </select>
-            </div>
 
-            {(statusFilter !== 'all' || waitingListFilter !== 'all') && (
+            {statusFilter !== 'all' && (
               <button
                 onClick={() => {
                   setStatusFilter('all');
-                  setWaitingListFilter('all');
                   setCurrentPage(1);
                 }}
                 className="px-3 py-2 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors whitespace-nowrap"
@@ -419,6 +399,10 @@ export default function ClientsPage() {
                           ? 'bg-green-100 text-green-800'
                           : client['Confirmation Status'] === 'cancelled'
                           ? 'bg-red-100 text-red-800'
+                          : client['Confirmation Status'] === 'waiting'
+                          ? 'bg-orange-100 text-orange-800'
+                          : client['Confirmation Status'] === 'reserved'
+                          ? 'bg-blue-100 text-blue-800'
                           : 'bg-yellow-100 text-yellow-800'
                       }`}>
                         {client['Confirmation Status'] || 'pending'}
@@ -455,7 +439,7 @@ export default function ClientsPage() {
       </div>
       
       <div className="bg-white p-4 rounded-lg border border-gray-200">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
           <div className="text-sm text-gray-700">
             Total Clients: <span className="text-black font-semibold">{clients.length}</span>
           </div>
@@ -467,6 +451,16 @@ export default function ClientsPage() {
           <div className="text-sm text-gray-700">
             Pending: <span className="text-yellow-800 font-semibold">
               {filteredClients.filter(client => client['Confirmation Status'] === 'pending').length}
+            </span>
+          </div>
+          <div className="text-sm text-gray-700">
+            Waiting: <span className="text-orange-800 font-semibold">
+              {filteredClients.filter(client => client['Confirmation Status'] === 'waiting').length}
+            </span>
+          </div>
+          <div className="text-sm text-gray-700">
+            Reserved: <span className="text-blue-800 font-semibold">
+              {filteredClients.filter(client => client['Confirmation Status'] === 'reserved').length}
             </span>
           </div>
           <div className="text-sm text-gray-700">
