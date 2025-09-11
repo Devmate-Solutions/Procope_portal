@@ -594,8 +594,8 @@ export interface HotelApiResponse {
   city: string;
   estate: string;
   zip_code?: string;
-  available_king: string;
-  available_queen: string;
+  double_available: string;
+  single_available: string;
   price: string;
   price_weekly?: string;
   checkin_time: string;
@@ -665,8 +665,8 @@ export const hotelAPI = {
       city: hotelData['City'],
       estate: hotelData['State'],
       zip_code: hotelData['Zip Code'],
-      available_king: hotelData['Double Bed'],
-      available_queen: hotelData['Single Bed'],
+      double_available: hotelData['Double Bed'],
+      single_available: hotelData['Single Bed'],
       price: hotelData['Price'],
       price_weekly: hotelData['price_weekly'],
       checkin_time: hotelData['Checkin Time'],
@@ -724,8 +724,8 @@ export const hotelAPI = {
       city: hotelData['City'],
       estate: hotelData['State'],
       zip_code: hotelData['Zip Code'] || '',
-      available_king: hotelData['Double Bed'],
-      available_queen: hotelData['Single Bed'],
+      double_available: hotelData['Double Bed'],
+      single_available: hotelData['Single Bed'],
       price: hotelData['Price'],
       checkin_time: hotelData['Checkin Time'],
       checkout_time: hotelData['Checkout Time']
@@ -786,8 +786,8 @@ export const hotelAPI = {
         city: hotelData['City'],
         estate: hotelData['State'],
         zip_code: hotelData['Zip Code'] || '',
-        available_king: hotelData['Double Bed'],
-        available_queen: hotelData['Single Bed'],
+        double_available: hotelData['Double Bed'],
+        single_available: hotelData['Single Bed'],
         price: hotelData['Price'],
         price_weekly: hotelData['price_weekly'],
         checkin_time: hotelData['Checkin Time'],
