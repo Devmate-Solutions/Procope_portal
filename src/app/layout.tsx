@@ -8,8 +8,8 @@ import "./globals.css";
 
 
 export const metadata: Metadata = {
-  title: "My Dent AI Dashboard",
-  description: "Multi-tenant Retell AI voice agent management system",
+  title: "Procope AI Dashboard",
+  description: "Multi-tenant Procope AI automation management system",
 };
 
 export default function RootLayout({
