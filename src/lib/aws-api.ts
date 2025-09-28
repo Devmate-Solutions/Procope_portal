@@ -654,6 +654,41 @@ export interface Client {
   'Occupants': string;
 }
 
+// Orders API Functions
+export async function getAllOrders() {
+  try {
+    console.log('Fetching all orders from external API');
+
+    const response = await fetch('https://1lqtkwm5jg.execute-api.us-east-1.amazonaws.com/v1/allorders', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    console.log(`Orders API response status: ${response.status}`);
+
+    if (!response.ok) {
+      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorData.message || errorMessage;
+      } catch (e) {
+        // If response is not JSON, use status text
+      }
+      throw new Error(errorMessage);
+    }
+
+    const data = await response.json();
+    console.log('Orders data received:', data);
+    return data;
+
+  } catch (error) {
+    console.error('Failed to fetch orders:', error);
+    throw error;
+  }
+}
+
 // Hotel API Functions
 export const hotelAPI = {
   // Add a new hotel

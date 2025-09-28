@@ -26,7 +26,8 @@ export const PAGE_ACCESS_TEMPLATES = {
   scribe: ['scribe', 'scribe-history'],
   claims: [  'claims-archive','claims-submit'],
   usermanage: ['user-management'],
-  hotel: ['analytics', 'clients', 'hotels']
+  hotel: ['analytics', 'clients', 'hotels'],
+  flower: ['dashboard', 'orders']
 };
 // export const PAGE_ACCESS_TEMPLATES = {
 //   template1: ['basic', 'dashboard', 'call-history', 'analytics', 'create-calls', 'user-management'],
@@ -39,10 +40,15 @@ export const PAGE_ACCESS_TEMPLATES = {
 // Check if user has access to a specific page
 export function hasPageAccess(user: UserProfile | null, page: string): boolean {
   if (!user || !user.allowedPages) return false;
-  
+
+  // Special case: if workspace is "Atlanta Flower Shop", allow orders access
+  if (page === 'orders' && user.workspaceName === 'Atlanta Flower Shop') {
+    return true;
+  }
+
   // Check direct page access
   if (user.allowedPages.includes(page)) return true;
-  
+
   // Check template-based access
   for (const allowedPage of user.allowedPages) {
     const template = PAGE_ACCESS_TEMPLATES[allowedPage as keyof typeof PAGE_ACCESS_TEMPLATES];
@@ -50,27 +56,32 @@ export function hasPageAccess(user: UserProfile | null, page: string): boolean {
       return true;
     }
   }
-  
+
   return false;
 }
 
 // Get all accessible pages for a user//
 export function getAccessiblePages(user: UserProfile | null): string[] {
   if (!user || !user.allowedPages) return [];
-  
+
   const accessiblePages = new Set<string>();
-  
+
+  // Special case: if workspace is "Atlanta Flower Shop", add orders
+  if (user.workspaceName === 'Atlanta Flower Shop') {
+    accessiblePages.add('orders');
+  }
+
   for (const allowedPage of user.allowedPages) {
     // Add the page itself
     accessiblePages.add(allowedPage);
-    
+
     // Add template pages
     const template = PAGE_ACCESS_TEMPLATES[allowedPage as keyof typeof PAGE_ACCESS_TEMPLATES];
     if (template) {
       template.forEach(page => accessiblePages.add(page));
     }
   }
-  
+
   return Array.from(accessiblePages);
 }
 

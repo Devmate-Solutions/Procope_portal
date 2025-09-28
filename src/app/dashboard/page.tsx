@@ -220,12 +220,35 @@ export default function DashboardPage() {
 
           {/* Navigation Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Check if user has "hotel" access - if so, only show hotel-related pages */}
+            {/* Check if user has special access pages */}
             {(() => {
               const hasHotelAccess = user?.allowedPages?.includes('hotel')
-              const hotelPages = ['analytics', 'clients', 'hotels']
+              const hasFlowerAccess = user?.allowedPages?.includes('flower') || user?.workspaceName === 'Atlanta Flower Shop'
 
-              if (hasHotelAccess) {
+              if (hasFlowerAccess) {
+                // Show dashboard and orders for Atlanta Flower Shop
+                return (
+                  <>
+                    {hasPageAccess(user, 'orders') && (
+                      <Link href="/orders">
+                        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                          <CardHeader>
+                            <CardTitle className="flex items-center space-x-3">
+                              <FileText className="h-6 w-6 text-[#1F4280]" />
+                              <span>Orders</span>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-gray-600">
+                              View and manage all flower shop orders.
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    )}
+                  </>
+                )
+              } else if (hasHotelAccess) {
                 // Only show analytics, clients, and hotels for hotel users
                 return (
                   <>

@@ -14,7 +14,8 @@ import {
   History,
   UserPlus,
   LayoutDashboard,
-  Building
+  Building,
+  ShoppingBag
 } from 'lucide-react'
 import { getCurrentUser, hasPageAccess } from '@/lib/auth'
 import { useEffect, useState } from 'react'
@@ -101,6 +102,12 @@ export function Sidebar({ className }: SidebarProps) {
       href: '/user-management',
       icon: Users,
       requiredPage: 'user-management'
+    },
+    {
+      name: 'Orders',
+      href: '/orders',
+      icon: ShoppingBag,
+      requiredPage: 'orders'
     },
     {
       name: 'Add User',
