@@ -16,7 +16,10 @@ import {
   Search,
   Filter,
   Download,
-  ArrowUpDown
+  ArrowUpDown,
+  AlertTriangle,
+  Clock,
+  X
 } from 'lucide-react'
 
 interface Order {
@@ -69,6 +72,7 @@ export default function OrdersPage() {
   const [error, setError] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [unpaidOrdersAlert, setUnpaidOrdersAlert] = useState(true)
 
   const fetchOrders = async () => {
     try {
@@ -95,9 +99,43 @@ export default function OrdersPage() {
     }
   }
 
+  // Auto-refresh every minute
   useEffect(() => {
     fetchOrders()
+
+    // Set up auto-refresh interval
+    const interval = setInterval(() => {
+      fetchOrders()
+    }, 60000) // 60 seconds
+
+    // Cleanup interval on component unmount
+    return () => clearInterval(interval)
   }, [])
+
+  // Function to check if order is older than 30 minutes in US Eastern timezone
+  const isOrderOlderThan30Minutes = (createdAt: string): boolean => {
+    try {
+      const orderDate = new Date(createdAt)
+      const now = new Date()
+
+      // Convert to US Eastern timezone
+      const easternOrderTime = new Date(orderDate.toLocaleString("en-US", {timeZone: "America/New_York"}))
+      const easternNow = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}))
+
+      const diffMinutes = (easternNow.getTime() - easternOrderTime.getTime()) / (1000 * 60)
+      return diffMinutes > 30
+    } catch {
+      return false
+    }
+  }
+
+  // Get unpaid orders older than 30 minutes
+  const unpaidOldOrders = orders.filter(order =>
+    order.status &&
+    order.status.toLowerCase() === 'created' &&
+    order.createdAt &&
+    isOrderOlderThan30Minutes(order.createdAt)
+  )
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -171,6 +209,9 @@ export default function OrdersPage() {
             <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
               <ShoppingBag className="h-8 w-8 text-blue-600" />
               Orders Management
+              <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                Auto-refresh: 1min
+              </span>
             </h1>
             <p className="text-gray-600 mt-2">Atlanta Flower Shop - Order Dashboard</p>
           </div>
@@ -179,6 +220,68 @@ export default function OrdersPage() {
             Refresh
           </Button>
         </div>
+
+        {/* Unpaid Orders Alert */}
+        {unpaidOldOrders.length > 0 && unpaidOrdersAlert && (
+          <Card className="border-orange-200 bg-orange-50">
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5" />
+                  <div>
+                    <h3 className="font-semibold text-orange-800 mb-2">
+                      Order not completed – {unpaidOldOrders.length} client{unpaidOldOrders.length !== 1 ? 's have' : ' has'} not paid yet
+                    </h3>
+                    <div className="space-y-2">
+                      {unpaidOldOrders.slice(0, 5).map((order, index) => {
+                        const minutesOld = Math.floor(
+                          (new Date(new Date().toLocaleString("en-US", {timeZone: "America/New_York"})).getTime() -
+                           new Date(new Date(order.createdAt).toLocaleString("en-US", {timeZone: "America/New_York"})).getTime()) / (1000 * 60)
+                        )
+                        return (
+                          <div key={order.orderId || index} className="flex items-center justify-between p-2 bg-white rounded border border-orange-200">
+                            <div className="flex items-center gap-3">
+                              <Clock className="h-4 w-4 text-orange-500" />
+                              <div>
+                                <span className="font-medium text-gray-900">
+                                  {order.customerInfo?.fullname || 'Unknown Customer'}
+                                </span>
+                                <span className="text-sm text-gray-600 ml-2">
+                                  (Order #{order.orderId?.slice(-8) || index + 1})
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-orange-700">
+                                {minutesOld} min ago
+                              </span>
+                              <span className="font-semibold text-gray-900">
+                                {formatCurrency(order.totalAmount || '0')}
+                              </span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                      {unpaidOldOrders.length > 5 && (
+                        <div className="text-sm text-orange-700 pl-7">
+                          +{unpaidOldOrders.length - 5} more unpaid orders...
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setUnpaidOrdersAlert(false)}
+                  className="text-orange-600 hover:text-orange-800"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -360,11 +463,18 @@ export default function OrdersPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredOrders.map((order, index) => (
-                      <tr
-                        key={order.orderId || index}
-                        className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
-                      >
+                    {filteredOrders.map((order, index) => {
+                      const isOldUnpaid = order.status?.toLowerCase() === 'created' &&
+                                         order.createdAt &&
+                                         isOrderOlderThan30Minutes(order.createdAt)
+
+                      return (
+                        <tr
+                          key={order.orderId || index}
+                          className={`border-b border-gray-200 hover:bg-gray-50 transition-colors ${
+                            isOldUnpaid ? 'bg-orange-25 border-orange-200' : ''
+                          }`}
+                        >
                         <td className="p-4 border-r border-gray-100">
                           <div className="font-mono text-sm text-blue-600">
                             #{order.orderId?.slice(-8) || `${index.toString().padStart(8, '0')}`}
@@ -412,9 +522,14 @@ export default function OrdersPage() {
                           </div>
                         </td>
                         <td className="p-4 border-r border-gray-100">
-                          <Badge className={`${getStatusColor(order.status || 'unknown')} border px-2 py-1`}>
-                            {order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Unknown'}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge className={`${getStatusColor(order.status || 'unknown')} border px-2 py-1`}>
+                              {order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Unknown'}
+                            </Badge>
+                            {isOldUnpaid && (
+                              <AlertTriangle className="h-4 w-4 text-orange-500" title="Payment overdue (30+ minutes)" />
+                            )}
+                          </div>
                         </td>
                         <td className="p-4 border-r border-gray-100">
                           <div className="text-sm text-gray-900">
@@ -443,8 +558,9 @@ export default function OrdersPage() {
                             )}
                           </div>
                         </td>
-                      </tr>
-                    ))}
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
