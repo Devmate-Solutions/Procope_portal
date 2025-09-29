@@ -23,7 +23,8 @@ import {
 } from 'lucide-react'
 
 interface Order {
-  totalAmount: string
+  totalAmount: string,
+  isPickup: boolean,
   customerInfo: {
     phone: string
     email: string
@@ -476,6 +477,7 @@ export default function OrdersPage() {
                         </div>
                       </th>
                       <th className="text-left p-4 font-medium text-gray-900 border-r border-gray-200">Payment Status</th>
+                      <th className="text-left p-4 font-medium text-gray-900 border-r border-gray-200">Delivery Method</th>
                       <th className="text-left p-4 font-medium text-gray-900 border-r border-gray-200">Contact</th>
                       <th className="text-left p-4 font-medium text-gray-900 border-r border-gray-200">Address</th>
                       <th className="text-left p-4 font-medium text-gray-900">Feedback</th>
@@ -559,6 +561,11 @@ export default function OrdersPage() {
                           <Badge className={`${getPaymentStatusColor(order.payment_status || 'unknown')} border px-2 py-1`}>
                             {order.payment_status ? order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1) : 'Unknown'}
                           </Badge>
+                        </td>
+                        <td className="p-4 border-r border-gray-100">
+                          <div className="text-sm text-gray-600">
+                            {order.isPickup ? 'Pickup' : 'Delivery'}
+                          </div>
                         </td>
                         <td className="p-4 border-r border-gray-100">
                           <div className="text-sm space-y-1">
