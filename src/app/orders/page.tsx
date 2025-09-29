@@ -64,8 +64,6 @@ interface Order {
   }
   orderSource: string
   updatedAt: string
-  payment_status: string
-  feedback: string
 }
 
 export default function OrdersPage() {
@@ -149,21 +147,6 @@ export default function OrdersPage() {
         return 'bg-green-100 text-green-800 border-green-200'
       case 'cancelled':
         return 'bg-red-100 text-red-800 border-red-200'
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200'
-    }
-  }
-
-  const getPaymentStatusColor = (paymentStatus: string) => {
-    switch (paymentStatus?.toLowerCase()) {
-      case 'paid':
-        return 'bg-green-100 text-green-800 border-green-200'
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-      case 'failed':
-        return 'bg-red-100 text-red-800 border-red-200'
-      case 'refunded':
-        return 'bg-purple-100 text-purple-800 border-purple-200'
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200'
     }
@@ -475,10 +458,8 @@ export default function OrdersPage() {
                           <ArrowUpDown className="h-4 w-4 text-gray-400" />
                         </div>
                       </th>
-                      <th className="text-left p-4 font-medium text-gray-900 border-r border-gray-200">Payment Status</th>
                       <th className="text-left p-4 font-medium text-gray-900 border-r border-gray-200">Contact</th>
-                      <th className="text-left p-4 font-medium text-gray-900 border-r border-gray-200">Address</th>
-                      <th className="text-left p-4 font-medium text-gray-900">Feedback</th>
+                      <th className="text-left p-4 font-medium text-gray-900">Address</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -556,11 +537,6 @@ export default function OrdersPage() {
                           </div>
                         </td>
                         <td className="p-4 border-r border-gray-100">
-                          <Badge className={`${getPaymentStatusColor(order.payment_status || 'unknown')} border px-2 py-1`}>
-                            {order.payment_status ? order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1) : 'Unknown'}
-                          </Badge>
-                        </td>
-                        <td className="p-4 border-r border-gray-100">
                           <div className="text-sm space-y-1">
                             <div className="text-gray-900">{order.customerInfo?.phone || 'N/A'}</div>
                             <div className="text-gray-500 truncate max-w-[150px]">
@@ -568,7 +544,7 @@ export default function OrdersPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="p-4 border-r border-gray-100">
+                        <td className="p-4">
                           <div className="text-sm text-gray-600 max-w-[200px]">
                             {order.shippingAddress ? (
                               <>
@@ -579,17 +555,6 @@ export default function OrdersPage() {
                               </>
                             ) : (
                               <div>No address provided</div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <div className="text-sm text-gray-600 max-w-[200px]">
-                            {order.feedback ? (
-                              <div className="truncate" title={order.feedback}>
-                                {order.feedback}
-                              </div>
-                            ) : (
-                              <div className="text-gray-400 italic">No feedback</div>
                             )}
                           </div>
                         </td>
