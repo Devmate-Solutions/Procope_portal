@@ -138,7 +138,7 @@ export default function OrdersPage() {
         return 'bg-blue-100 text-blue-800 border-blue-200'
       case 'processing':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-      case 'completed':
+      case 'fulfilled':
         return 'bg-green-100 text-green-800 border-green-200'
       case 'cancelled':
         return 'bg-red-100 text-red-800 border-red-200'
@@ -178,6 +178,83 @@ export default function OrdersPage() {
 
   const formatCurrency = (amount: string) => {
     return `$${parseFloat(amount || '0').toFixed(2)}`
+  }
+
+  const exportToCSV = () => {
+    if (filteredOrders.length === 0) {
+      alert('No orders to export')
+      return
+    }
+
+    // Create CSV header
+    const headers = [
+      'Order ID',
+      'Shopify Order ID',
+      'Customer Name',
+      'Customer Email',
+      'Customer Phone',
+      'Product Details',
+      'Total Amount',
+      'Status',
+      'Payment Status',
+      'Delivery Method',
+      'Shipping Address',
+      'Billing Address',
+      'Order Date',
+      'Feedback',
+      'Note'
+    ]
+
+    // Create CSV rows
+    const rows = filteredOrders.map(order => {
+      const products = order.lineItems?.map(item =>
+        `${item.product_name} (${item.option}, Qty: ${item.quantity}, Price: $${item.price})`
+      ).join('; ') || 'No items'
+
+      const shippingAddr = order.shippingAddress
+        ? `${order.shippingAddress.address1}, ${order.shippingAddress.city}, ${order.shippingAddress.province} ${order.shippingAddress.zip}, ${order.shippingAddress.country}`
+        : 'N/A'
+
+      const billingAddr = order.billingAddress
+        ? `${order.billingAddress.address1}, ${order.billingAddress.city}, ${order.billingAddress.province} ${order.billingAddress.zip}, ${order.billingAddress.country}`
+        : 'N/A'
+
+      return [
+        order.orderId || '',
+        order.shopifyOrderId || '',
+        order.customerInfo?.fullname || '',
+        order.customerInfo?.email || '',
+        order.customerInfo?.phone || '',
+        `"${products}"`,
+        order.totalAmount || '0',
+        order.status || '',
+        order.payment_status || '',
+        order.isPickup ? 'Pickup' : 'Delivery',
+        `"${shippingAddr}"`,
+        `"${billingAddr}"`,
+        order.createdAt ? formatDate(order.createdAt) : '',
+        `"${order.feedback || ''}"`,
+        `"${order.note || ''}"`
+      ]
+    })
+
+    // Combine headers and rows
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n')
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+
+    link.setAttribute('href', url)
+    link.setAttribute('download', `orders_export_${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   // Filter orders based on search and status
@@ -355,18 +432,14 @@ export default function OrdersPage() {
                   </option>
                   <option value="created">Created</option>
                   <option value="processing">Processing</option>
-                  <option value="completed">Completed</option>
+                  <option value="fulfilled">Fulfilled</option>
                   <option value="cancelled">Cancelled</option>
                 </select>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm">
-                  <Filter className="h-4 w-4 mr-2" />
-                  Filter
-                </Button>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={exportToCSV}>
                   <Download className="h-4 w-4 mr-2" />
-                  Export
+                  Export CSV
                 </Button>
               </div>
             </div>
