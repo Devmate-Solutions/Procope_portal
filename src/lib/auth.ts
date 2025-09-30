@@ -27,7 +27,7 @@ export const PAGE_ACCESS_TEMPLATES = {
   claims: [  'claims-archive','claims-submit'],
   usermanage: ['user-management'],
   hotel: ['analytics', 'clients', 'hotels'],
-  flower: ['call-history','analytics', 'orders','user-management']
+  flower: ['call-history','analytics', 'orders','user-management','dashboard']
 };
 // export const PAGE_ACCESS_TEMPLATES = {
 //   template1: ['basic', 'dashboard', 'call-history', 'analytics', 'create-calls', 'user-management'],
