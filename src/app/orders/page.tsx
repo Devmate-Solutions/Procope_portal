@@ -132,14 +132,6 @@ export default function OrdersPage() {
     }
   }
 
-  // Get unpaid orders older than 30 minutes
-  const unpaidOldOrders = orders.filter(order =>
-    order.status &&
-    order.status.toLowerCase() === 'created' &&
-    order.createdAt &&
-    isOrderOlderThan30Minutes(order.createdAt)
-  )
-
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'created':
@@ -199,11 +191,37 @@ export default function OrdersPage() {
       (order.shopifyOrderId?.toLowerCase()?.includes(searchLower))
     )
 
-    const matchesStatus = statusFilter === 'all' ||
-      (order.status && order.status.toLowerCase() === statusFilter.toLowerCase())
+    let matchesStatus = false
+    if (statusFilter === 'all') {
+      matchesStatus = true
+    } else if (statusFilter === 'not_completed') {
+      // Show orders that are "created" and older than 30 minutes
+      matchesStatus = order.status &&
+                     order.status.toLowerCase() === 'created' &&
+                     order.createdAt &&
+                     isOrderOlderThan30Minutes(order.createdAt)
+    } else {
+      matchesStatus = order.status && order.status.toLowerCase() === statusFilter.toLowerCase()
+    }
 
     return matchesSearch && matchesStatus
   })
+
+  // Get unpaid orders older than 30 minutes (always from all orders, not filtered)
+  const unpaidOldOrders = orders.filter(order =>
+    order.status &&
+    order.status.toLowerCase() === 'created' &&
+    order.createdAt &&
+    isOrderOlderThan30Minutes(order.createdAt)
+  )
+
+  // Get unpaid orders that match current filter
+  const filteredUnpaidOrders = filteredOrders.filter(order =>
+    order.status &&
+    order.status.toLowerCase() === 'created' &&
+    order.createdAt &&
+    isOrderOlderThan30Minutes(order.createdAt)
+  )
 
   if (loading) {
     return (
@@ -239,67 +257,6 @@ export default function OrdersPage() {
           </Button>
         </div>
 
-        {/* Unpaid Orders Alert */}
-        {unpaidOldOrders.length > 0 && unpaidOrdersAlert && (
-          <Card className="border-orange-200 bg-orange-50">
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5" />
-                  <div>
-                    <h3 className="font-semibold text-orange-800 mb-2">
-                      Order not completed – {unpaidOldOrders.length} client{unpaidOldOrders.length !== 1 ? 's have' : ' has'} not paid yet
-                    </h3>
-                    <div className="space-y-2">
-                      {unpaidOldOrders.slice(0, 5).map((order, index) => {
-                        const minutesOld = Math.floor(
-                          (new Date(new Date().toLocaleString("en-US", {timeZone: "America/New_York"})).getTime() -
-                           new Date(new Date(order.createdAt).toLocaleString("en-US", {timeZone: "America/New_York"})).getTime()) / (1000 * 60)
-                        )
-                        return (
-                          <div key={order.orderId || index} className="flex items-center justify-between p-2 bg-white rounded border border-orange-200">
-                            <div className="flex items-center gap-3">
-                              <Clock className="h-4 w-4 text-orange-500" />
-                              <div>
-                                <span className="font-medium text-gray-900">
-                                  {order.customerInfo?.fullname || 'Unknown Customer'}
-                                </span>
-                                <span className="text-sm text-gray-600 ml-2">
-                                  (Order #{order.orderId?.slice(-8) || index + 1})
-                                </span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm text-orange-700">
-                                {minutesOld} min ago
-                              </span>
-                              <span className="font-semibold text-gray-900">
-                                {formatCurrency(order.totalAmount || '0')}
-                              </span>
-                            </div>
-                          </div>
-                        )
-                      })}
-                      {unpaidOldOrders.length > 5 && (
-                        <div className="text-sm text-orange-700 pl-7">
-                          +{unpaidOldOrders.length - 5} more unpaid orders...
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setUnpaidOrdersAlert(false)}
-                  className="text-orange-600 hover:text-orange-800"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -393,6 +350,9 @@ export default function OrdersPage() {
                   className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="all">All Status</option>
+                  <option value="not_completed">
+                    Order not completed – {unpaidOldOrders.length} client{unpaidOldOrders.length !== 1 ? 's have' : ' has'} not paid yet
+                  </option>
                   <option value="created">Created</option>
                   <option value="processing">Processing</option>
                   <option value="completed">Completed</option>
