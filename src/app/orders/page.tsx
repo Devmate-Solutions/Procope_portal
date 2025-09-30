@@ -548,7 +548,7 @@ export default function OrdersPage() {
                               {order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Unknown'}
                             </Badge>
                             {isOldUnpaid && (
-                              <AlertTriangle className="h-4 w-4 text-orange-500" title="Payment overdue (30+ minutes)" />
+                              <AlertTriangle className="h-4 w-4 text-orange-500" />
                             )}
                           </div>
                         </td>
