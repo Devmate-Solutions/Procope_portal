@@ -75,7 +75,11 @@ export default function OrdersPage() {
   const [error, setError] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [paymentFilter, setPaymentFilter] = useState('all')
   const [unpaidOrdersAlert, setUnpaidOrdersAlert] = useState(true)
+  const [expandedFeedback, setExpandedFeedback] = useState<string | null>(null)
+  const [expandedNote, setExpandedNote] = useState<string | null>(null)
+  const [sortByDate, setSortByDate] = useState<'asc' | 'desc' | null>(null)
 
   const fetchOrders = async () => {
     try {
@@ -150,6 +154,8 @@ export default function OrdersPage() {
   const getPaymentStatusColor = (paymentStatus: string) => {
     switch (paymentStatus?.toLowerCase()) {
       case 'paid':
+      case 'completed':
+      case 'fulfilled':
         return 'bg-green-100 text-green-800 border-green-200'
       case 'pending':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200'
@@ -162,17 +168,32 @@ export default function OrdersPage() {
     }
   }
 
+  const getEffectivePaymentStatus = (order: Order): string => {
+    if (order.payment_status?.toLowerCase() === 'paid' ||
+        order.status?.toLowerCase() === 'completed' ||
+        order.status?.toLowerCase() === 'fulfilled') {
+      return 'paid'
+    }
+    return order.payment_status || 'pending'
+  }
+
   const formatDate = (dateString: string) => {
     try {
-      return new Date(dateString).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
+      const date = new Date(dateString)
+      return {
+        date: date.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        }),
+        time: date.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        })
+      }
     } catch {
-      return dateString
+      return { date: dateString, time: '' }
     }
   }
 
@@ -257,7 +278,7 @@ export default function OrdersPage() {
     document.body.removeChild(link)
   }
 
-  // Filter orders based on search and status
+  // Filter orders based on search, status, and payment
   const filteredOrders = orders.filter(order => {
     const searchLower = searchTerm.toLowerCase()
 
@@ -271,34 +292,65 @@ export default function OrdersPage() {
     let matchesStatus = false
     if (statusFilter === 'all') {
       matchesStatus = true
-    } else if (statusFilter === 'not_completed') {
-      // Show orders that are "created" and older than 30 minutes
-      matchesStatus = order.status &&
-                     order.status.toLowerCase() === 'created' &&
-                     order.createdAt &&
-                     isOrderOlderThan30Minutes(order.createdAt)
     } else {
       matchesStatus = order.status && order.status.toLowerCase() === statusFilter.toLowerCase()
     }
 
-    return matchesSearch && matchesStatus
+    let matchesPayment = false
+    if (paymentFilter === 'all') {
+      matchesPayment = true
+    } else if (paymentFilter === 'pending_old') {
+      const effectivePaymentStatus = getEffectivePaymentStatus(order)
+      matchesPayment = effectivePaymentStatus === 'pending' &&
+                      order.createdAt &&
+                      isOrderOlderThan30Minutes(order.createdAt)
+    } else {
+      const effectivePaymentStatus = getEffectivePaymentStatus(order)
+      matchesPayment = effectivePaymentStatus === paymentFilter
+    }
+
+    return matchesSearch && matchesStatus && matchesPayment
   })
 
+  // Sort orders by date if sorting is enabled
+  const sortedAndFilteredOrders = [...filteredOrders].sort((a, b) => {
+    if (!sortByDate) return 0
+
+    const dateA = new Date(a.createdAt || 0)
+    const dateB = new Date(b.createdAt || 0)
+
+    if (sortByDate === 'asc') {
+      return dateA.getTime() - dateB.getTime()
+    } else {
+      return dateB.getTime() - dateA.getTime()
+    }
+  })
+
+  const handleDateSort = () => {
+    if (sortByDate === null) {
+      setSortByDate('desc') // Start with newest first
+    } else if (sortByDate === 'desc') {
+      setSortByDate('asc') // Then oldest first
+    } else {
+      setSortByDate(null) // Then no sorting
+    }
+  }
+
   // Get unpaid orders older than 30 minutes (always from all orders, not filtered)
-  const unpaidOldOrders = orders.filter(order =>
-    order.status &&
-    order.status.toLowerCase() === 'created' &&
-    order.createdAt &&
-    isOrderOlderThan30Minutes(order.createdAt)
-  )
+  const unpaidOldOrders = orders.filter(order => {
+    const effectivePaymentStatus = getEffectivePaymentStatus(order)
+    return effectivePaymentStatus === 'pending' &&
+           order.createdAt &&
+           isOrderOlderThan30Minutes(order.createdAt)
+  })
 
   // Get unpaid orders that match current filter
-  const filteredUnpaidOrders = filteredOrders.filter(order =>
-    order.status &&
-    order.status.toLowerCase() === 'created' &&
-    order.createdAt &&
-    isOrderOlderThan30Minutes(order.createdAt)
-  )
+  const filteredUnpaidOrders = filteredOrders.filter(order => {
+    const effectivePaymentStatus = getEffectivePaymentStatus(order)
+    return effectivePaymentStatus === 'pending' &&
+           order.createdAt &&
+           isOrderOlderThan30Minutes(order.createdAt)
+  })
 
   if (loading) {
     return (
@@ -407,6 +459,33 @@ export default function OrdersPage() {
           </Card>
         </div>
 
+        {/* Payment Status Alert */}
+        {unpaidOldOrders.length > 0 && (
+          <Card className="border-orange-200 bg-orange-50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="h-5 w-5 text-orange-600" />
+                <div className="flex-1">
+                  <p className="text-orange-800 font-medium">
+                    {unpaidOldOrders.length} order{unpaidOldOrders.length !== 1 ? 's' : ''} pending payment for over 30 minutes
+                  </p>
+                  <p className="text-orange-700 text-sm">
+                    These orders should be either fulfilled or marked as paid.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-orange-300 text-orange-700 hover:bg-orange-100"
+                  onClick={() => setPaymentFilter('pending_old')}
+                >
+                  View Orders
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Search and Filter Controls */}
         <Card>
           <CardHeader>
@@ -427,13 +506,24 @@ export default function OrdersPage() {
                   className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="all">All Status</option>
-                  <option value="not_completed">
-                    Order not completed – {unpaidOldOrders.length} client{unpaidOldOrders.length !== 1 ? 's have' : ' has'} not paid yet
-                  </option>
                   <option value="created">Created</option>
                   <option value="processing">Processing</option>
                   <option value="fulfilled">Fulfilled</option>
                   <option value="cancelled">Cancelled</option>
+                </select>
+                <select
+                  value={paymentFilter}
+                  onChange={(e) => setPaymentFilter(e.target.value)}
+                  className="px-3 py-2 border border-amber-300 bg-amber-50 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                >
+                  <option value="all">All Payments</option>
+                  <option value="pending_old">
+                    🔥 Pending 30+ min ({unpaidOldOrders.length})
+                  </option>
+                  <option value="paid">Paid/Completed</option>
+                  <option value="pending">Pending</option>
+                  <option value="failed">Failed</option>
+                  <option value="refunded">Refunded</option>
                 </select>
               </div>
               <div className="flex gap-2">
@@ -462,7 +552,7 @@ export default function OrdersPage() {
         )}
 
         {/* Orders Table */}
-        {filteredOrders.length === 0 && !error ? (
+        {sortedAndFilteredOrders.length === 0 && !error ? (
           <Card>
             <CardContent className="p-12">
               <div className="text-center text-gray-500">
@@ -480,7 +570,12 @@ export default function OrdersPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-lg font-semibold">
-                Orders ({filteredOrders.length})
+                Orders ({sortedAndFilteredOrders.length})
+                {sortByDate && (
+                  <span className="text-sm font-normal text-gray-500 ml-2">
+                    (sorted by date {sortByDate === 'asc' ? 'oldest first' : 'newest first'})
+                  </span>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
@@ -489,36 +584,37 @@ export default function OrdersPage() {
                   <thead>
                     <tr className="border-b-2 border-gray-200 bg-gray-50">
                       <th className="text-left p-4 font-medium text-gray-900 border-r border-gray-200">
-                        <div className="flex items-center gap-2">
-                          Order ID
-                          <ArrowUpDown className="h-4 w-4 text-gray-400" />
-                        </div>
+                        Order ID
                       </th>
                       <th className="text-left p-4 font-medium text-gray-900 border-r border-gray-200">Customer</th>
                       <th className="text-left p-4 font-medium text-gray-900 border-r border-gray-200">Product</th>
                       <th className="text-left p-4 font-medium text-gray-900 border-r border-gray-200">
-                        <div className="flex items-center gap-2">
-                          Amount
-                          <ArrowUpDown className="h-4 w-4 text-gray-400" />
-                        </div>
+                        Amount
                       </th>
                       <th className="text-left p-4 font-medium text-gray-900 border-r border-gray-200">Status</th>
                       <th className="text-left p-4 font-medium text-gray-900 border-r border-gray-200">
-                        <div className="flex items-center gap-2">
+                        <button
+                          onClick={handleDateSort}
+                          className="flex items-center gap-2 hover:text-blue-600 transition-colors"
+                        >
                           Date
-                          <ArrowUpDown className="h-4 w-4 text-gray-400" />
-                        </div>
+                          {sortByDate === 'asc' && <span className="text-blue-600">↑</span>}
+                          {sortByDate === 'desc' && <span className="text-blue-600">↓</span>}
+                          {sortByDate === null && <span className="text-gray-400">↕</span>}
+                        </button>
                       </th>
                       <th className="text-left p-4 font-medium text-gray-900 border-r border-gray-200">Payment Status</th>
                       <th className="text-left p-4 font-medium text-gray-900 border-r border-gray-200">Delivery Method</th>
                       <th className="text-left p-4 font-medium text-gray-900 border-r border-gray-200">Contact</th>
                       <th className="text-left p-4 font-medium text-gray-900 border-r border-gray-200">Address</th>
-                      <th className="text-left p-4 font-medium text-gray-900">Feedback</th>
+                      <th className="text-left p-4 font-medium text-gray-900 border-r border-gray-200">Feedback</th>
+                      <th className="text-left p-4 font-medium text-gray-900">Note</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredOrders.map((order, index) => {
-                      const isOldUnpaid = order.status?.toLowerCase() === 'created' &&
+                    {sortedAndFilteredOrders.map((order, index) => {
+                      const effectivePaymentStatus = getEffectivePaymentStatus(order)
+                      const isOldUnpaid = effectivePaymentStatus === 'pending' &&
                                          order.createdAt &&
                                          isOrderOlderThan30Minutes(order.createdAt)
 
@@ -586,13 +682,24 @@ export default function OrdersPage() {
                           </div>
                         </td>
                         <td className="p-4 border-r border-gray-100">
-                          <div className="text-sm text-gray-900">
-                            {order.createdAt ? formatDate(order.createdAt) : 'N/A'}
+                          <div className="text-sm">
+                            {order.createdAt ? (
+                              <>
+                                <div className="text-gray-900 font-medium whitespace-nowrap">
+                                  {formatDate(order.createdAt).date}
+                                </div>
+                                <div className="text-gray-500 text-xs whitespace-nowrap">
+                                  {formatDate(order.createdAt).time}
+                                </div>
+                              </>
+                            ) : (
+                              <div className="text-gray-400">N/A</div>
+                            )}
                           </div>
                         </td>
                         <td className="p-4 border-r border-gray-100">
-                          <Badge className={`${getPaymentStatusColor(order.payment_status || 'unknown')} border px-2 py-1`}>
-                            {order.payment_status ? order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1) : 'Unknown'}
+                          <Badge className={`${getPaymentStatusColor(getEffectivePaymentStatus(order))} border px-2 py-1`}>
+                            {getEffectivePaymentStatus(order).charAt(0).toUpperCase() + getEffectivePaymentStatus(order).slice(1)}
                           </Badge>
                         </td>
                         <td className="p-4 border-r border-gray-100">
@@ -622,14 +729,49 @@ export default function OrdersPage() {
                             )}
                           </div>
                         </td>
-                        <td className="p-4">
+                        <td className="p-4 border-r border-gray-100">
                           <div className="text-sm text-gray-600 max-w-[200px]">
                             {order.feedback ? (
-                              <div className="truncate" title={order.feedback}>
-                                {order.feedback}
+                              <div>
+                                <div className={expandedFeedback === order.orderId ? '' : 'line-clamp-2'}>
+                                  {order.feedback}
+                                </div>
+                                {order.feedback.length > 30 && (
+                                  <button
+                                    onClick={() => setExpandedFeedback(
+                                      expandedFeedback === order.orderId ? null : order.orderId
+                                    )}
+                                    className="text-blue-600 hover:text-blue-800 text-xs mt-1 underline block"
+                                  >
+                                    {expandedFeedback === order.orderId ? 'Show less' : 'Show more'}
+                                  </button>
+                                )}
                               </div>
                             ) : (
                               <div className="text-gray-400 italic">No feedback</div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <div className="text-sm text-gray-600 max-w-[200px]">
+                            {order.note ? (
+                              <div>
+                                <div className={expandedNote === order.orderId ? '' : 'line-clamp-2'}>
+                                  {order.note}
+                                </div>
+                                {order.note.length > 30 && (
+                                  <button
+                                    onClick={() => setExpandedNote(
+                                      expandedNote === order.orderId ? null : order.orderId
+                                    )}
+                                    className="text-blue-600 hover:text-blue-800 text-xs mt-1 underline block"
+                                  >
+                                    {expandedNote === order.orderId ? 'Show less' : 'Show more'}
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-gray-400 italic">No note</div>
                             )}
                           </div>
                         </td>
