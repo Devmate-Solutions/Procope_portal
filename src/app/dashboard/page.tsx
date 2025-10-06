@@ -226,7 +226,7 @@ export default function DashboardPage() {
               const hasFlowerAccess = user?.allowedPages?.includes('flower') || user?.workspaceName === 'Atlanta Flower Shop'
 
               if (hasFlowerAccess) {
-                // Show dashboard and orders for Atlanta Flower Shop
+                // Show only orders for Atlanta Flower Shop (no call history)
                 return (
                   <>
                     {hasPageAccess(user, 'orders') && (

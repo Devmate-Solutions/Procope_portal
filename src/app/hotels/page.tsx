@@ -69,6 +69,7 @@ export default function HotelsPage() {
           'Single Bed': hotel.single_available,
           'price_weekly': hotel.price_weekly, // New field - to be populated from API or calculated
           'Waiting List': '', // New field - to be populated from API or calculated
+          'Amenities': '', // New field - to be populated from API
           'Price': hotel.price,
           'Checkin Time': hotel.checkin_time,
           'Checkout Time': hotel.checkout_time
@@ -368,6 +369,9 @@ export default function HotelsPage() {
                   Price Weekly
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Amenities
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Price Nightly
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
@@ -384,7 +388,7 @@ export default function HotelsPage() {
             <tbody className="divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={13} className="px-6 py-8 text-center text-gray-400">
+                  <td colSpan={12} className="px-6 py-8 text-center text-gray-400">
                     <div className="flex items-center justify-center space-x-2">
                       <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                       <span>Loading hotels...</span>
@@ -393,7 +397,7 @@ export default function HotelsPage() {
                 </tr>
               ) : paginatedHotels.length === 0 ? (
                 <tr>
-                  <td colSpan={13} className="px-6 py-8 text-center text-gray-400">
+                  <td colSpan={12} className="px-6 py-8 text-center text-gray-400">
                     No hotels found matching your search.
                   </td>
                 </tr>
@@ -423,6 +427,9 @@ export default function HotelsPage() {
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-700">
                       {renderEditableCell(hotel, 'price_weekly', hotel['price_weekly'] || '')}
+                    </td>
+                    <td className="px-4 py-4 text-sm text-gray-700">
+                      {renderEditableCell(hotel, 'Amenities', hotel['Amenities'] || '')}
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-700">
                       {renderEditableCell(hotel, 'Price', hotel['Price'] || '')}

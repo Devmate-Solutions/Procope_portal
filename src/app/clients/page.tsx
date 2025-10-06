@@ -300,12 +300,6 @@ export default function ClientsPage() {
             <thead className="bg-gray-100">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  First Name
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Last Name
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Phone Number
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
@@ -337,7 +331,7 @@ export default function ClientsPage() {
             <tbody className="divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={11} className="px-4 py-8 text-center text-gray-400">
+                  <td colSpan={9} className="px-4 py-8 text-center text-gray-400">
                     <div className="flex items-center justify-center space-x-2">
                       <div className="w-5 h-5 border-2 border-green-500 border-t-transparent rounded-full animate-spin"></div>
                       <span>Loading clients...</span>
@@ -346,19 +340,13 @@ export default function ClientsPage() {
                 </tr>
               ) : paginatedClients.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="px-4 py-8 text-center text-gray-400">
+                  <td colSpan={9} className="px-4 py-8 text-center text-gray-400">
                     No clients found matching your search.
                   </td>
                 </tr>
               ) : (
                 paginatedClients.map((client, index) => (
                   <tr key={client.client_id || index} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-black">
-                      {client['First Name']}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-black">
-                      {client['Last Name']}
-                    </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                       {client['Phone Number']}
                     </td>

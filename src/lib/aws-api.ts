@@ -634,6 +634,7 @@ export interface Hotel {
   'Reservations': string;
   'price_weekly'?: string;
   'Waiting List': string;
+  'Amenities'?: string;
   'Price': string;
   'Checkin Time': string;
   'Checkout Time': string;

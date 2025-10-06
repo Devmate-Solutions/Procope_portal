@@ -119,7 +119,9 @@ export function Sidebar({ className }: SidebarProps) {
 
   // Check if user has "hotel" in allowedPages - if so, only show hotel-related pages
   const hasHotelAccess = user?.allowedPages?.includes('hotel')
+  const hasFlowerAccess = user?.allowedPages?.includes('flower') || user?.workspaceName === 'Atlanta Flower Shop'
   console.log('Sidebar - Has hotel access:', hasHotelAccess)
+  console.log('Sidebar - Has flower access:', hasFlowerAccess)
 
   let accessibleItems
   if (hasHotelAccess) {
@@ -129,6 +131,12 @@ export function Sidebar({ className }: SidebarProps) {
       hotelPages.includes(item.requiredPage) && hasPageAccess(user, item.requiredPage)
     )
     console.log('Sidebar - Hotel user accessible items:', accessibleItems.map(item => item.name))
+  } else if (hasFlowerAccess) {
+    // If user has flower shop access, show all accessible pages except call-history
+    accessibleItems = navigationItems.filter(item =>
+      item.requiredPage !== 'call-history' && hasPageAccess(user, item.requiredPage)
+    )
+    console.log('Sidebar - Flower shop accessible items:', accessibleItems.map(item => item.name))
   } else {
     // Otherwise, show all pages they have access to
     accessibleItems = navigationItems.filter(item =>
