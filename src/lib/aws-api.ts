@@ -574,7 +574,7 @@ export function validateNumber(phoneNumber: string): { isValid: boolean; format:
 }
 
 // API Configuration
-const API_URL = "https://n8yh3flwsc.execute-api.us-east-1.amazonaws.com/prod/api/stablegold_calling";
+const API_URL = "https://e2o38eg717.execute-api.us-east-1.amazonaws.com/P1/stable_gold";
 
 const HEADERS = {
   'Content-Type': 'application/json',
@@ -598,6 +598,7 @@ export interface HotelApiResponse {
   single_available: string;
   price: string;
   price_weekly?: string;
+  amenities?: string;
   checkin_time: string;
   checkout_time: string;
   created_at?: string;
@@ -606,17 +607,14 @@ export interface HotelApiResponse {
 
 export interface ClientApiResponse {
   client_id?: string;
-  first_name: string;
-  last_name: string;
   phone_number: string;
   reservation_hotel: string;
   reservation_date: string;
   checkin_time: string;
   call_date: string;
   call_summary: string;
-  to_follow_up: boolean;
+  to_follow_up: string | boolean;
   confirmation_status: string;
-  occupants: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -642,17 +640,14 @@ export interface Hotel {
 
 export interface Client {
   client_id?: string;
-  'First Name': string;
-  'Last Name': string;
   'Phone Number': string;
   'Reservation Hotel': string;
   'Reservation Date': string;
   'Checkin Time': string;
   'Call Date': string;
   'Call Summary': string;
-  'To Follow Up': boolean;
+  'To Folllow Up': string | boolean;  // Note: keeping the typo from the API
   'Confirmation Status': string;
-  'Occupants': string;
 }
 
 // Orders API Functions
@@ -705,6 +700,7 @@ export const hotelAPI = {
       single_available: hotelData['Single Bed'],
       price: hotelData['Price'],
       price_weekly: hotelData['price_weekly'],
+      amenities: hotelData['Amenities'],
       checkin_time: hotelData['Checkin Time'],
       checkout_time: hotelData['Checkout Time']
     };
@@ -763,6 +759,7 @@ export const hotelAPI = {
       double_available: hotelData['Double Bed'],
       single_available: hotelData['Single Bed'],
       price: hotelData['Price'],
+      amenities: hotelData['Amenities'],
       checkin_time: hotelData['Checkin Time'],
       checkout_time: hotelData['Checkout Time']
     };
@@ -826,6 +823,7 @@ export const hotelAPI = {
         single_available: hotelData['Single Bed'],
         price: hotelData['Price'],
         price_weekly: hotelData['price_weekly'],
+        amenities: hotelData['Amenities'],
         checkin_time: hotelData['Checkin Time'],
         checkout_time: hotelData['Checkout Time']
       }
@@ -847,28 +845,25 @@ export const hotelAPI = {
 
 // Client API Functions
 export const clientAPI = {
-  // Add a new client
+  // Add a new client (manage with mode: append)
   async addClient(clientData: Client) {
-    // Convert title case to snake_case for API
+    // Convert title case to API format (using title case fields as per API spec)
     const apiData = {
-      first_name: clientData['First Name'],
-      last_name: clientData['Last Name'],
-      phone_number: clientData['Phone Number'],
-      reservation_hotel: clientData['Reservation Hotel'],
-      reservation_date: clientData['Reservation Date'],
-      checkin_time: clientData['Checkin Time'],
-      call_date: clientData['Call Date'],
-      call_summary: clientData['Call Summary'],
-      to_follow_up: clientData['To Follow Up'],
-      confirmation_status: clientData['Confirmation Status'] || 'pending',
-      occupants: clientData['Occupants'] || '1'
+      "Phone Number": clientData['Phone Number'],
+      "Reservation Hotel": clientData['Reservation Hotel'],
+      "Reservation Date": clientData['Reservation Date'],
+      "Checkin Time": clientData['Checkin Time'],
+      "Call Date": clientData['Call Date'],
+      "Call Summary": clientData['Call Summary'],
+      "To Folllow Up": String(clientData['To Folllow Up'] || 'false'),  // Note: keeping the typo from API
+      "Confirmation Status": clientData['Confirmation Status'] || 'pending'
     };
 
     const payload = {
       action: "manage",
       entity: "clients",
       mode: "append",
-      data: apiData
+      data: [apiData]  // Wrap in array as per API spec
     };
 
     const response = await fetch(API_URL, {
@@ -885,12 +880,16 @@ export const clientAPI = {
   },
 
   // Query clients
-  async getClients(filters?: { first_name?: string; last_name?: string; phone?: string }) {
-    const payload = {
+  async getClients(phoneNumber?: string) {
+    const payload: any = {
       action: "query",
-      entity: "clients",
-      ...filters
+      entity: "clients"
     };
+
+    // Add phone_number filter if provided
+    if (phoneNumber) {
+      payload.phone_number = phoneNumber;
+    }
 
     const response = await fetch(API_URL, {
       method: 'POST',
@@ -905,15 +904,14 @@ export const clientAPI = {
     return response.json();
   },
 
-  // Update existing client
-  async updateClient(clientId: string, firstName: string, lastName: string, fields: Partial<Client>) {
+  // Update existing client (using update action)
+  async updateClient(clientId: string, phoneNumber: string, fields: any) {
     const payload = {
       action: "update",
       entity: "clients",
       updates: [{
         client_id: clientId,
-        first_name: firstName,
-        last_name: lastName,
+        phone_number: phoneNumber,
         fields: fields
       }]
     };
@@ -931,29 +929,83 @@ export const clientAPI = {
     return response.json();
   },
 
-  // Edit existing client (using update action that backend supports)
+  // Edit existing client (using manage with mode: update)
   async editClient(clientId: string, clientData: Client) {
-    // Convert title case to snake_case for API fields
-    const fields = {
-      phone_number: clientData['Phone Number'],
-      reservation_hotel: clientData['Reservation Hotel'],
-      reservation_date: clientData['Reservation Date'],
-      checkin_time: clientData['Checkin Time'],
-      call_date: clientData['Call Date'],
-      call_summary: clientData['Call Summary'],
-      to_follow_up: clientData['To Follow Up'],
-      confirmation_status: clientData['Confirmation Status'] || 'pending',
-      occupants: clientData['Occupants'] || '1'
+    // Convert to API format
+    const apiData = {
+      "Phone Number": clientData['Phone Number'],
+      "Call Summary": clientData['Call Summary'],
+      "Confirmation Status": clientData['Confirmation Status'] || 'pending',
+      "Reservation Hotel": clientData['Reservation Hotel'],
+      "Reservation Date": clientData['Reservation Date'],
+      "Checkin Time": clientData['Checkin Time'],
+      "Call Date": clientData['Call Date'],
+      "To Folllow Up": String(clientData['To Folllow Up'] || 'false')
     };
 
     const payload = {
-      action: "update",
+      action: "manage",
       entity: "clients",
-      updates: [{
+      mode: "update",
+      data: apiData
+    };
+
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: HEADERS,
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  // Upsert client (create or update)
+  async upsertClient(clientData: Client | Client[]) {
+    const dataArray = Array.isArray(clientData) ? clientData : [clientData];
+
+    const apiData = dataArray.map(client => ({
+      "Phone Number": client['Phone Number'],
+      "Reservation Hotel": client['Reservation Hotel'],
+      "Reservation Date": client['Reservation Date'],
+      "Checkin Time": client['Checkin Time'],
+      "Call Date": client['Call Date'],
+      "Call Summary": client['Call Summary'],
+      "To Folllow Up": String(client['To Folllow Up'] || 'false'),
+      "Confirmation Status": client['Confirmation Status'] || 'pending'
+    }));
+
+    const payload = {
+      action: "manage",
+      entity: "clients",
+      mode: "upsert",
+      data: apiData
+    };
+
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: HEADERS,
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  // Delete client
+  async deleteClient(clientId: string, phoneNumber: string) {
+    const payload = {
+      action: "delete",
+      entity: "clients",
+      clients: [{
         client_id: clientId,
-        first_name: clientData['First Name'],
-        last_name: clientData['Last Name'],
-        fields: fields
+        phone_number: phoneNumber
       }]
     };
 
@@ -981,7 +1033,7 @@ export const clientAPI = {
       // Mock successful follow-up
       return {
         success: true,
-        message: `Follow-up initiated for ${clientData['First Name']} ${clientData['Last Name']}`,
+        message: `Follow-up initiated for ${clientData['Phone Number']}`,
         followUpId: `followup_${Date.now()}`
       };
     } catch (error) {

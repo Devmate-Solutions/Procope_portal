@@ -58,20 +58,19 @@ export default function ClientsPage() {
         console.log('✅ Found clients array:', response.clients.length, 'items');
         console.log('🔍 First client data format:', response.clients[0]);
         
-        // Convert snake_case API response to title case for UI
+        // Convert API response to UI format
         const convertedClients: Client[] = response.clients.map((client: ClientApiResponse) => ({
           client_id: client.client_id,
-          'First Name': client.first_name,
-          'Last Name': client.last_name,
           'Phone Number': client.phone_number,
           'Reservation Hotel': client.reservation_hotel,
           'Reservation Date': client.reservation_date,
           'Checkin Time': client.checkin_time,
           'Call Date': client.call_date,
           'Call Summary': client.call_summary,
-          'To Follow Up': client.to_follow_up,
-          'Confirmation Status': client.confirmation_status || 'pending',
-          'Occupants': client.occupants || '1'
+          'To Folllow Up': typeof client.to_follow_up === 'string'
+            ? client.to_follow_up === 'true'
+            : client.to_follow_up,
+          'Confirmation Status': client.confirmation_status || 'pending'
         }));
         
         setClients(convertedClients);
@@ -93,10 +92,9 @@ export default function ClientsPage() {
   const filteredClients = clients.filter(client => {
     // Search filter
     const matchesSearch = searchTerm === '' ||
-      (client['First Name']?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-      (client['Last Name']?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
       (client['Reservation Hotel']?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-      (client['Phone Number'] || '').includes(searchTerm);
+      (client['Phone Number'] || '').includes(searchTerm) ||
+      (client['Call Summary']?.toLowerCase() || '').includes(searchTerm.toLowerCase());
 
     // Status filter
     const matchesStatus = statusFilter === 'all' || client['Confirmation Status'] === statusFilter;
@@ -156,9 +154,9 @@ export default function ClientsPage() {
   };
 
   // View full call summary
-  const handleViewCallSummary = (callSummary: string, clientName: string) => {
+  const handleViewCallSummary = (callSummary: string, phoneNumber: string) => {
     setSelectedCallSummary(callSummary);
-    setSelectedClientName(clientName);
+    setSelectedClientName(phoneNumber);
     setShowCallSummaryModal(true);
   };
 
@@ -321,9 +319,6 @@ export default function ClientsPage() {
                   Confirmation Status
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Occupants
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -331,7 +326,7 @@ export default function ClientsPage() {
             <tbody className="divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-gray-400">
+                  <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
                     <div className="flex items-center justify-center space-x-2">
                       <div className="w-5 h-5 border-2 border-green-500 border-t-transparent rounded-full animate-spin"></div>
                       <span>Loading clients...</span>
@@ -340,7 +335,7 @@ export default function ClientsPage() {
                 </tr>
               ) : paginatedClients.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-gray-400">
+                  <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
                     No clients found matching your search.
                   </td>
                 </tr>
@@ -369,7 +364,7 @@ export default function ClientsPage() {
                         </div>
                         {client['Call Summary'] && client['Call Summary'].length > 50 && (
                           <button
-                            onClick={() => handleViewCallSummary(client['Call Summary'], `${client['First Name']} ${client['Last Name']}`)}
+                            onClick={() => handleViewCallSummary(client['Call Summary'], client['Phone Number'])}
                             className="flex-shrink-0 p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
                             title="View full call summary"
                           >
@@ -396,12 +391,9 @@ export default function ClientsPage() {
                         {client['Confirmation Status'] || 'pending'}
                       </span>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {client['Occupants'] || '1'}
-                    </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm">
                       <div className="flex space-x-2">
-                        {client['To Follow Up'] && (
+                        {client['To Folllow Up'] && (
                           <button
                             onClick={() => handleFollowUp(client)}
                             disabled={followUpLoading === client.client_id}
@@ -453,7 +445,7 @@ export default function ClientsPage() {
           </div>
           <div className="text-sm text-gray-700">
             Follow-ups Required: <span className="text-blue-800 font-semibold">
-              {filteredClients.filter(client => client['To Follow Up']).length}
+              {filteredClients.filter(client => client['To Folllow Up']).length}
             </span>
           </div>
         </div>
