@@ -26,8 +26,8 @@ export const PAGE_ACCESS_TEMPLATES = {
   scribe: ['scribe', 'scribe-history'],
   claims: [  'claims-archive','claims-submit'],
   usermanage: ['user-management'],
-  hotel: ['analytics', 'clients', 'hotels','dashboard','user-management'],
-  flower: ['call-history','analytics', 'orders','user-management','dashboard']
+  hotel: ['call-history','analytics', 'clients', 'hotels','dashboard','user-management'],
+  flower: ['user-management','dashboard','call-history','analytics', 'orders']
 };
 // export const PAGE_ACCESS_TEMPLATES = {
 //   template1: ['basic', 'dashboard', 'call-history', 'analytics', 'create-calls', 'user-management'],
