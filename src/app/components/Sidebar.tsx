@@ -126,7 +126,7 @@ export function Sidebar({ className }: SidebarProps) {
   let accessibleItems
   if (hasHotelAccess) {
     // If user has "hotel" access, only show analytics, clients, and hotels
-    const hotelPages = ['analytics', 'clients', 'hotels']
+    const hotelPages = ['analytics', 'clients', 'hotels', 'dashboard', 'user-management']
     accessibleItems = navigationItems.filter(item =>
       hotelPages.includes(item.requiredPage) && hasPageAccess(user, item.requiredPage)
     )
