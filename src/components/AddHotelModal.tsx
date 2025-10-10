@@ -23,6 +23,7 @@ export default function AddHotelModal({ isOpen, onClose, onSubmit, loading, init
     'Single Bed': '0',
     'Reservations': '',
     'Waiting List': '',
+    'Amenities': '',
     'Price': '',
     'Checkin Time': '3:00 PM',
     'Checkout Time': '11:00 AM'
@@ -46,6 +47,7 @@ export default function AddHotelModal({ isOpen, onClose, onSubmit, loading, init
       'Single Bed': '0',
       'Reservations': '',
       'Waiting List': '',
+      'Amenities': '',
       'Price': '',
       'Checkin Time': '3:00 PM',
       'Checkout Time': '11:00 AM'
@@ -201,6 +203,19 @@ export default function AddHotelModal({ isOpen, onClose, onSubmit, loading, init
                   placeholder="0"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Amenities
+              </label>
+              <input
+                type="text"
+                value={formData['Amenities']}
+                onChange={(e) => setFormData({ ...formData, 'Amenities': e.target.value })}
+                placeholder="WiFi, Parking, Pool, etc."
+                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-black focus:border-black"
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">

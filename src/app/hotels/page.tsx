@@ -67,9 +67,9 @@ export default function HotelsPage() {
           'Zip Code': hotel.zip_code || '',
           'Double Bed': hotel.double_available,
           'Single Bed': hotel.single_available,
-          'price_weekly': hotel.price_weekly, // New field - to be populated from API or calculated
+          'price_weekly': hotel.price_weekly || '',
           'Waiting List': '', // New field - to be populated from API or calculated
-          'Amenities': '', // New field - to be populated from API
+          'Amenities': hotel.amenities || '',
           'Price': hotel.price,
           'Checkin Time': hotel.checkin_time,
           'Checkout Time': hotel.checkout_time
